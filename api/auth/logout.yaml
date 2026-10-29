@@ -1,0 +1,61 @@
+post:
+  summary: Invalidate active refresh token session
+  description: |
+    Revokes the active refresh token associated with the session.
+    Idempotency: Returns 204 No Content even if the token has already been revoked.
+    Consistency & Cache Bounds:
+    - Revocation is immediately persisted to PostgreSQL.
+    - Redis cache tombstones are bounded by configured TTL.
+    - Logout revokes the refresh token only; the short-lived access JWT remains valid until its expiration timestamp (`exp`).
+  operationId: logout
+  tags:
+    - Authentication & Identity
+  security:
+    - bearerJwt: []
+  parameters:
+    - $ref: "../components/headers.yaml#/IdempotencyKeyHeader"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  requestBody:
+    required: false
+    content:
+      application/json:
+        schema:
+          $ref: "./schemas.yaml#/LogoutRequest"
+  responses:
+    "204":
+      description: Session successfully invalidated or already revoked (idempotent).
+      headers:
+        Cache-Control:
+          $ref: "../components/headers.yaml#/CacheControlNoStoreResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+    "401":
+      description: Missing or invalid bearer JWT.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Too many requests. Rate limit exceeded.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"

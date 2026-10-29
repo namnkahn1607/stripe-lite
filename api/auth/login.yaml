@@ -1,0 +1,69 @@
+post:
+  summary: Interactive merchant credentials authentication
+  description: |
+    Authenticates merchant credentials (email and password) and establishes a dashboard session.
+    Returns a short-lived access JWT and an opaque rotating refresh token.
+  operationId: login
+  tags:
+    - Authentication & Identity
+  security: []
+  parameters:
+    - $ref: "../components/headers.yaml#/IdempotencyKeyHeader"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "./schemas.yaml#/LoginRequest"
+  responses:
+    "200":
+      description: Authentication successful. Session credentials returned.
+      headers:
+        Cache-Control:
+          $ref: "../components/headers.yaml#/CacheControlNoStoreResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas.yaml#/LoginResponse"
+    "400":
+      description: Invalid credentials payload or malformed request.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "401":
+      description: Invalid email or password.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Too many authentication attempts. Request rate-limited.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
