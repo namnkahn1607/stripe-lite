@@ -1,0 +1,104 @@
+Merchant:
+  type: object
+  description: Merchant profile entity representing a tenant on Stripe-lite.
+  required:
+    - id
+    - business_name
+    - email
+    - status
+    - default_currency
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      pattern: '^mer_[0-9A-Za-z]{26,36}$'
+      description: Unique identifier for the merchant account.
+      example: "mer_01HXZ5JABC1234567890123456"
+    business_name:
+      type: string
+      maxLength: 255
+      description: The legal or trade name of the merchant business.
+      example: "Acme Payments Inc."
+    email:
+      type: string
+      format: email
+      maxLength: 255
+      description: Primary contact and login email address for the merchant.
+      example: "billing@acmepayments.com"
+    status:
+      type: string
+      description: Operational status of the merchant account.
+      enum:
+        - active
+        - suspended
+        - pending
+      example: "active"
+    default_currency:
+      type: string
+      minLength: 3
+      maxLength: 3
+      description: Three-letter ISO 4217 currency code used as standard settlement currency.
+      example: "USD"
+    created_at:
+      type: string
+      format: date-time
+      description: Timestamp when the merchant profile was registered.
+      example: "2026-10-23T04:40:00Z"
+    updated_at:
+      type: string
+      format: date-time
+      description: Timestamp when the merchant profile was last updated.
+      example: "2026-10-23T04:40:00Z"
+
+CreateMerchantRequest:
+  type: object
+  description: Payload required for public merchant self-service onboarding.
+  required:
+    - business_name
+    - email
+    - password
+  properties:
+    business_name:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: Legal or display business name.
+      example: "Acme Payments Inc."
+    email:
+      type: string
+      format: email
+      maxLength: 255
+      description: Merchant primary account email. Must be globally unique.
+      example: "billing@acmepayments.com"
+    password:
+      type: string
+      format: password
+      minLength: 8
+      maxLength: 128
+      description: Dashboard password. Salted and hashed using Argon2id/bcrypt.
+      example: "Sup3rS3cr3tP@ss!"
+    default_currency:
+      type: string
+      minLength: 3
+      maxLength: 3
+      default: "USD"
+      description: Three-letter ISO 4217 settlement currency.
+      example: "USD"
+
+UpdateMerchantRequest:
+  type: object
+  description: Payload for updating merchant profile settings.
+  properties:
+    business_name:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: Updated business name.
+      example: "Acme Global Solutions"
+    default_currency:
+      type: string
+      minLength: 3
+      maxLength: 3
+      description: Updated default settlement currency.
+      example: "EUR"
