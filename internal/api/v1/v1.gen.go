@@ -24,8 +24,25 @@ import (
 )
 
 const (
-	ApiKeyAuthScopes = "ApiKeyAuth.Scopes"
-	BearerAuthScopes = "BearerAuth.Scopes"
+	ApiKeyScopes    = "apiKey.Scopes"
+	BearerJwtScopes = "bearerJwt.Scopes"
+)
+
+// Defines values for ApiKeyPrefix.
+const (
+	ApiKeyPrefixSkLive ApiKeyPrefix = "sk_live_"
+	ApiKeyPrefixSkTest ApiKeyPrefix = "sk_test_"
+)
+
+// Defines values for ApiKeyListResponseObject.
+const (
+	ApiKeyListResponseObjectList ApiKeyListResponseObject = "list"
+)
+
+// Defines values for CreateApiKeyResponsePrefix.
+const (
+	CreateApiKeyResponsePrefixSkLive CreateApiKeyResponsePrefix = "sk_live_"
+	CreateApiKeyResponsePrefixSkTest CreateApiKeyResponsePrefix = "sk_test_"
 )
 
 // Defines values for CreatePaymentIntentRequestCaptureMethod.
@@ -34,10 +51,32 @@ const (
 	Manual    CreatePaymentIntentRequestCaptureMethod = "manual"
 )
 
+// Defines values for CustomerObject.
+const (
+	CustomerObjectCustomer CustomerObject = "customer"
+)
+
+// Defines values for CustomerListResponseObject.
+const (
+	CustomerListResponseObjectList CustomerListResponseObject = "list"
+)
+
 // Defines values for HealthResponseStatus.
 const (
 	Degraded HealthResponseStatus = "degraded"
 	Ok       HealthResponseStatus = "ok"
+)
+
+// Defines values for LoginResponseTokenType.
+const (
+	LoginResponseTokenTypeBearer LoginResponseTokenType = "Bearer"
+)
+
+// Defines values for MerchantStatus.
+const (
+	MerchantStatusActive    MerchantStatus = "active"
+	MerchantStatusPending   MerchantStatus = "pending"
+	MerchantStatusSuspended MerchantStatus = "suspended"
 )
 
 // Defines values for PaymentIntentResponseStatus.
@@ -49,25 +88,149 @@ const (
 	Succeeded             PaymentIntentResponseStatus = "succeeded"
 )
 
-// Defines values for WebhookEndpointResponseStatus.
+// Defines values for RefreshTokenResponseTokenType.
 const (
-	Active   WebhookEndpointResponseStatus = "active"
-	Disabled WebhookEndpointResponseStatus = "disabled"
+	RefreshTokenResponseTokenTypeBearer RefreshTokenResponseTokenType = "Bearer"
 )
 
-// AuthTokenRequest defines model for AuthTokenRequest.
-type AuthTokenRequest struct {
-	// ApiKey Merchant secret API key.
-	ApiKey string `json:"api_key"`
+// Defines values for WebhookEndpointResponseStatus.
+const (
+	WebhookEndpointResponseStatusActive   WebhookEndpointResponseStatus = "active"
+	WebhookEndpointResponseStatusDisabled WebhookEndpointResponseStatus = "disabled"
+)
+
+// ApiKey Metadata representing a merchant secret API key.
+type ApiKey struct {
+	// CreatedAt Timestamp when the API key was generated.
+	CreatedAt time.Time `json:"created_at"`
+
+	// ExpiresAt Timestamp after which the key automatically becomes invalid. Null if never expires.
+	ExpiresAt *time.Time `json:"expires_at"`
+
+	// Id Unique identifier for the API key resource (corresponds to <key_id> in sk_live_<key_id>_<secret>).
+	Id string `json:"id"`
+
+	// Last4 Last 4 characters of the raw key secret for UI display and identification.
+	Last4 string `json:"last4"`
+
+	// LastUsedAt Timestamp when the API key was last used for authentication. Null if never used.
+	LastUsedAt *time.Time `json:"last_used_at"`
+
+	// Livemode True for live production keys (sk_live_*); false for sandbox test keys (sk_test_*).
+	Livemode bool `json:"livemode"`
+
+	// Name Human-readable display label for the key.
+	Name string `json:"name"`
+
+	// Prefix Key environment prefix.
+	Prefix ApiKeyPrefix `json:"prefix"`
+
+	// RevokedAt Timestamp when the API key was revoked. Null indicates the key is currently active.
+	RevokedAt *time.Time `json:"revoked_at"`
+
+	// Scopes Scopes or permissions granted to this API key.
+	Scopes []string `json:"scopes"`
 }
 
-// AuthTokenResponse defines model for AuthTokenResponse.
-type AuthTokenResponse struct {
-	AccessToken string `json:"access_token"`
+// ApiKeyPrefix Key environment prefix.
+type ApiKeyPrefix string
 
-	// ExpiresIn Lifetime of the access token in seconds.
-	ExpiresIn int    `json:"expires_in"`
-	TokenType string `json:"token_type"`
+// ApiKeyListResponse Cursor-paginated collection of merchant API keys.
+type ApiKeyListResponse struct {
+	Data []ApiKey `json:"data"`
+
+	// HasMore True if additional keys exist beyond the returned page.
+	HasMore bool                     `json:"has_more"`
+	Object  ApiKeyListResponseObject `json:"object"`
+}
+
+// ApiKeyListResponseObject defines model for ApiKeyListResponse.Object.
+type ApiKeyListResponseObject string
+
+// CreateApiKeyRequest Parameters required to provision a new API key.
+type CreateApiKeyRequest struct {
+	// ExpiresAt Optional expiration date-time.
+	ExpiresAt *time.Time `json:"expires_at"`
+
+	// Livemode Whether this key operates in livemode (`sk_live_`) or testmode (`sk_test_`).
+	Livemode bool `json:"livemode"`
+
+	// Name Display label identifying key usage.
+	Name string `json:"name"`
+
+	// Scopes Specific permission scopes assigned to this key.
+	Scopes *[]string `json:"scopes,omitempty"`
+}
+
+// CreateApiKeyResponse defines model for CreateApiKeyResponse.
+type CreateApiKeyResponse struct {
+	// CreatedAt Timestamp when the API key was generated.
+	CreatedAt time.Time `json:"created_at"`
+
+	// ExpiresAt Timestamp after which the key automatically becomes invalid. Null if never expires.
+	ExpiresAt *time.Time `json:"expires_at"`
+
+	// Id Unique identifier for the API key resource (corresponds to <key_id> in sk_live_<key_id>_<secret>).
+	Id string `json:"id"`
+
+	// Key The full raw secret key string in format `sk_live_<key_id>_<secret>` or `sk_test_<key_id>_<secret>`.
+	// Revealed ONLY ONCE at creation time. Stripe-lite stores only the SHA-256 digest of this secret.
+	Key string `json:"key"`
+
+	// Last4 Last 4 characters of the raw key secret for UI display and identification.
+	Last4 string `json:"last4"`
+
+	// LastUsedAt Timestamp when the API key was last used for authentication. Null if never used.
+	LastUsedAt *time.Time `json:"last_used_at"`
+
+	// Livemode True for live production keys (sk_live_*); false for sandbox test keys (sk_test_*).
+	Livemode bool `json:"livemode"`
+
+	// Name Human-readable display label for the key.
+	Name string `json:"name"`
+
+	// Prefix Key environment prefix.
+	Prefix CreateApiKeyResponsePrefix `json:"prefix"`
+
+	// RevokedAt Timestamp when the API key was revoked. Null indicates the key is currently active.
+	RevokedAt *time.Time `json:"revoked_at"`
+
+	// Scopes Scopes or permissions granted to this API key.
+	Scopes []string `json:"scopes"`
+}
+
+// CreateApiKeyResponsePrefix Key environment prefix.
+type CreateApiKeyResponsePrefix string
+
+// CreateCustomerRequest Payload for provisioning a new customer entity.
+type CreateCustomerRequest struct {
+	// Email Customer contact email.
+	Email *openapi_types.Email `json:"email,omitempty"`
+
+	// Metadata Key-value metadata pairs for storing arbitrary custom domain data.
+	// Constraints:
+	// - Maximum 50 keys per customer.
+	// - Key length: maximum 40 characters.
+	// - Value length: maximum 500 characters.
+	Metadata *CustomerMetadata `json:"metadata,omitempty"`
+
+	// Name Customer full name.
+	Name *string `json:"name,omitempty"`
+}
+
+// CreateMerchantRequest Payload required for public merchant self-service onboarding.
+type CreateMerchantRequest struct {
+	// BusinessName Legal or display business name.
+	BusinessName string `json:"business_name"`
+
+	// DefaultCurrency Three-letter ISO 4217 settlement currency.
+	DefaultCurrency *string `json:"default_currency,omitempty"`
+
+	// Email Merchant primary account email. Must be globally unique.
+	Email openapi_types.Email `json:"email"`
+
+	// Password Dashboard password. Salted and hashed using Argon2id/bcrypt.
+	Password string `json:"password"`
 }
 
 // CreatePaymentIntentRequest defines model for CreatePaymentIntentRequest.
@@ -95,6 +258,69 @@ type CreateWebhookEndpointRequest struct {
 	Url string `json:"url"`
 }
 
+// Customer Customer entity representing an end-user profile under a merchant tenant.
+type Customer struct {
+	// CreatedAt Timestamp when the customer was created.
+	CreatedAt time.Time `json:"created_at"`
+
+	// Email Customer's primary contact email address.
+	Email *openapi_types.Email `json:"email"`
+
+	// Id Monotonically time-sortable prefixed identifier (cus_ + ULID/UUIDv7).
+	Id string `json:"id"`
+
+	// Livemode True if created with an sk_live_* key; false if created with an sk_test_* key.
+	Livemode bool `json:"livemode"`
+
+	// Metadata Key-value metadata pairs for storing arbitrary custom domain data.
+	// Constraints:
+	// - Maximum 50 keys per customer.
+	// - Key length: maximum 40 characters.
+	// - Value length: maximum 500 characters.
+	Metadata CustomerMetadata `json:"metadata"`
+
+	// Name Customer's full name or business title.
+	Name   *string        `json:"name"`
+	Object CustomerObject `json:"object"`
+
+	// UpdatedAt Timestamp when the customer was last modified.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// CustomerObject defines model for Customer.Object.
+type CustomerObject string
+
+// CustomerListResponse Cursor-paginated collection envelope of customer resources.
+type CustomerListResponse struct {
+	Data []Customer `json:"data"`
+
+	// HasMore True if further records exist beyond the current page.
+	HasMore bool                       `json:"has_more"`
+	Object  CustomerListResponseObject `json:"object"`
+}
+
+// CustomerListResponseObject defines model for CustomerListResponse.Object.
+type CustomerListResponseObject string
+
+// CustomerMetadata Key-value metadata pairs for storing arbitrary custom domain data.
+// Constraints:
+// - Maximum 50 keys per customer.
+// - Key length: maximum 40 characters.
+// - Value length: maximum 500 characters.
+type CustomerMetadata map[string]string
+
+// ErrorItem defines model for ErrorItem.
+type ErrorItem struct {
+	// Code Machine-readable error code for this field.
+	Code string `json:"code"`
+
+	// Field The path or name of the invalid field or parameter.
+	Field *string `json:"field,omitempty"`
+
+	// Message Human-readable error message for this field.
+	Message string `json:"message"`
+}
+
 // HealthResponse defines model for HealthResponse.
 type HealthResponse struct {
 	Status    HealthResponseStatus `json:"status"`
@@ -114,6 +340,67 @@ type InvalidParam struct {
 	Reason string `json:"reason"`
 }
 
+// LoginRequest Merchant dashboard credentials for session initialization.
+type LoginRequest struct {
+	// Email Registered merchant email address.
+	Email openapi_types.Email `json:"email"`
+
+	// Password Merchant dashboard account password.
+	Password string `json:"password"`
+}
+
+// LoginResponse Scoped session credentials containing access JWT and rotating refresh token.
+type LoginResponse struct {
+	// AccessToken Short-lived cryptographically signed JWT for authenticating dashboard requests.
+	AccessToken string `json:"access_token"`
+
+	// ExpiresIn Lifetime of the access token in seconds (e.g., 900 for 15 minutes).
+	ExpiresIn int `json:"expires_in"`
+
+	// RefreshToken Opaque high-entropy rotating refresh token. Presenting this token revokes it and issues a replacement.
+	// Stored exclusively as a SHA-256 hash in PostgreSQL.
+	RefreshToken string `json:"refresh_token"`
+
+	// TokenType The authorization header scheme type.
+	TokenType LoginResponseTokenType `json:"token_type"`
+}
+
+// LoginResponseTokenType The authorization header scheme type.
+type LoginResponseTokenType string
+
+// LogoutRequest Optional payload specifying the specific refresh token to revoke.
+type LogoutRequest struct {
+	// RefreshToken The refresh token to explicitly revoke. If omitted, the session associated with the bearer JWT is invalidated.
+	RefreshToken *string `json:"refresh_token,omitempty"`
+}
+
+// Merchant Merchant profile entity representing a tenant on Stripe-lite.
+type Merchant struct {
+	// BusinessName The legal or trade name of the merchant business.
+	BusinessName string `json:"business_name"`
+
+	// CreatedAt Timestamp when the merchant profile was registered.
+	CreatedAt time.Time `json:"created_at"`
+
+	// DefaultCurrency Three-letter ISO 4217 currency code used as standard settlement currency.
+	DefaultCurrency string `json:"default_currency"`
+
+	// Email Primary contact and login email address for the merchant.
+	Email openapi_types.Email `json:"email"`
+
+	// Id Unique identifier for the merchant account.
+	Id string `json:"id"`
+
+	// Status Operational status of the merchant account.
+	Status MerchantStatus `json:"status"`
+
+	// UpdatedAt Timestamp when the merchant profile was last updated.
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// MerchantStatus Operational status of the merchant account.
+type MerchantStatus string
+
 // PaymentIntentResponse defines model for PaymentIntentResponse.
 type PaymentIntentResponse struct {
 	Amount    int64     `json:"amount"`
@@ -128,17 +415,26 @@ type PaymentIntentResponse struct {
 // PaymentIntentResponseStatus defines model for PaymentIntentResponse.Status.
 type PaymentIntentResponseStatus string
 
-// ProblemDocument RFC 7807 Problem Details representation for HTTP APIs.
-// See: https://datatracker.ietf.org/doc/html/rfc7807
+// ProblemDocument RFC 9457 Problem Details representation for HTTP APIs.
+// See: https://datatracker.ietf.org/doc/html/rfc9457
 type ProblemDocument struct {
+	// Code Machine-readable fine-grained domain error code.
+	Code *string `json:"code,omitempty"`
+
 	// Detail A human-readable explanation specific to this occurrence of the problem.
 	Detail *string `json:"detail,omitempty"`
+
+	// Errors Granular field-level validation or domain errors.
+	Errors *[]ErrorItem `json:"errors,omitempty"`
 
 	// Instance A URI reference that identifies the specific occurrence of the problem.
 	Instance *string `json:"instance,omitempty"`
 
-	// InvalidParams Granular field-level validation errors.
+	// InvalidParams Backward-compatible field errors alias.
 	InvalidParams *[]InvalidParam `json:"invalid_params,omitempty"`
+
+	// RequestId Distributed correlation ID for observability.
+	RequestId *string `json:"request_id,omitempty"`
 
 	// Status The HTTP status code generated by the origin server.
 	Status int32 `json:"status"`
@@ -148,6 +444,50 @@ type ProblemDocument struct {
 
 	// Type A URI reference identifying the problem type.
 	Type string `json:"type"`
+}
+
+// RefreshTokenRequest Request body to rotate an expired access JWT using an active refresh token.
+type RefreshTokenRequest struct {
+	// RefreshToken The active opaque rotating refresh token.
+	RefreshToken string `json:"refresh_token"`
+}
+
+// RefreshTokenResponse Newly rotated session credentials.
+type RefreshTokenResponse struct {
+	// AccessToken Fresh short-lived access JWT.
+	AccessToken string `json:"access_token"`
+
+	// ExpiresIn Lifetime of the new access token in seconds.
+	ExpiresIn int `json:"expires_in"`
+
+	// RefreshToken Replacement rotating refresh token belonging to the same token family.
+	RefreshToken string                        `json:"refresh_token"`
+	TokenType    RefreshTokenResponseTokenType `json:"token_type"`
+}
+
+// RefreshTokenResponseTokenType defines model for RefreshTokenResponse.TokenType.
+type RefreshTokenResponseTokenType string
+
+// UpdateCustomerRequest RFC 7396 JSON Merge Patch payload for updating customer attributes.
+// Properties omitted remain unchanged.
+// To delete or clear a string field, pass `null`.
+// For metadata, key-level merge applies: passing a key updates its value; passing `key: null` deletes that key.
+type UpdateCustomerRequest struct {
+	Email *openapi_types.Email `json:"email"`
+
+	// Metadata Key-level metadata updates. Set key value to null to delete.
+	// Constraints: maximum 50 keys, key length <= 40 characters, value length <= 500 characters.
+	Metadata *map[string]*string `json:"metadata,omitempty"`
+	Name     *string             `json:"name"`
+}
+
+// UpdateMerchantRequest Payload for updating merchant profile settings.
+type UpdateMerchantRequest struct {
+	// BusinessName Updated business name.
+	BusinessName *string `json:"business_name,omitempty"`
+
+	// DefaultCurrency Updated default settlement currency.
+	DefaultCurrency *string `json:"default_currency,omitempty"`
 }
 
 // WebhookEndpointResponse defines model for WebhookEndpointResponse.
@@ -164,16 +504,207 @@ type WebhookEndpointResponse struct {
 // WebhookEndpointResponseStatus defines model for WebhookEndpointResponse.Status.
 type WebhookEndpointResponseStatus string
 
+// EndingBeforeQueryParam defines model for EndingBeforeQueryParam.
+type EndingBeforeQueryParam = string
+
 // IdempotencyKeyHeader defines model for IdempotencyKeyHeader.
 type IdempotencyKeyHeader = string
+
+// IfNoneMatchHeader defines model for IfNoneMatchHeader.
+type IfNoneMatchHeader = string
+
+// LimitQueryParam defines model for LimitQueryParam.
+type LimitQueryParam = int
+
+// StartingAfterQueryParam defines model for StartingAfterQueryParam.
+type StartingAfterQueryParam = string
+
+// TraceparentHeader defines model for TraceparentHeader.
+type TraceparentHeader = string
 
 // XRequestIdHeader defines model for XRequestIdHeader.
 type XRequestIdHeader = openapi_types.UUID
 
-// CreateAuthTokenParams defines parameters for CreateAuthToken.
-type CreateAuthTokenParams struct {
+// ListApiKeysParams defines parameters for ListApiKeys.
+type ListApiKeysParams struct {
+	// StartingAfter A cursor for forward pagination indicating after which object ID to fetch.
+	// Pass the ID of the last item in the previous page.
+	// Behavior on deleted cursor: Because IDs are monotonic and time-sortable (e.g., cus_<ULID>),
+	// filtering evaluates `id > starting_after` directly and functions correctly even if the cursor
+	// record itself was soft-deleted or removed.
+	StartingAfter *StartingAfterQueryParam `form:"starting_after,omitempty" json:"starting_after,omitempty"`
+
+	// EndingBefore A cursor for backward pagination indicating before which object ID to fetch.
+	// Pass the ID of the first item in the current page to navigate backwards.
+	// Behavior on deleted cursor: Evaluates `id < ending_before` directly on monotonic sortable IDs.
+	EndingBefore *EndingBeforeQueryParam `form:"ending_before,omitempty" json:"ending_before,omitempty"`
+
+	// Limit Number of objects to return (1 to 100). Default is 10.
+	Limit *LimitQueryParam `form:"limit,omitempty" json:"limit,omitempty"`
+
 	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
 	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// CreateApiKeyParams defines parameters for CreateApiKey.
+type CreateApiKeyParams struct {
+	// IdempotencyKey Unique idempotency key supplied by the client to prevent double charging across network partitions.
+	// Recommended to use a v4 UUID or unique sequence token (max length 255 chars).
+	IdempotencyKey *IdempotencyKeyHeader `json:"Idempotency-Key,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// RevokeApiKeyParams defines parameters for RevokeApiKey.
+type RevokeApiKeyParams struct {
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// LoginParams defines parameters for Login.
+type LoginParams struct {
+	// IdempotencyKey Unique idempotency key supplied by the client to prevent double charging across network partitions.
+	// Recommended to use a v4 UUID or unique sequence token (max length 255 chars).
+	IdempotencyKey *IdempotencyKeyHeader `json:"Idempotency-Key,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// LogoutParams defines parameters for Logout.
+type LogoutParams struct {
+	// IdempotencyKey Unique idempotency key supplied by the client to prevent double charging across network partitions.
+	// Recommended to use a v4 UUID or unique sequence token (max length 255 chars).
+	IdempotencyKey *IdempotencyKeyHeader `json:"Idempotency-Key,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// RefreshTokenParams defines parameters for RefreshToken.
+type RefreshTokenParams struct {
+	// IdempotencyKey Unique idempotency key supplied by the client to prevent double charging across network partitions.
+	// Recommended to use a v4 UUID or unique sequence token (max length 255 chars).
+	IdempotencyKey *IdempotencyKeyHeader `json:"Idempotency-Key,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// ListCustomersParams defines parameters for ListCustomers.
+type ListCustomersParams struct {
+	// StartingAfter A cursor for forward pagination indicating after which object ID to fetch.
+	// Pass the ID of the last item in the previous page.
+	// Behavior on deleted cursor: Because IDs are monotonic and time-sortable (e.g., cus_<ULID>),
+	// filtering evaluates `id > starting_after` directly and functions correctly even if the cursor
+	// record itself was soft-deleted or removed.
+	StartingAfter *StartingAfterQueryParam `form:"starting_after,omitempty" json:"starting_after,omitempty"`
+
+	// EndingBefore A cursor for backward pagination indicating before which object ID to fetch.
+	// Pass the ID of the first item in the current page to navigate backwards.
+	// Behavior on deleted cursor: Evaluates `id < ending_before` directly on monotonic sortable IDs.
+	EndingBefore *EndingBeforeQueryParam `form:"ending_before,omitempty" json:"ending_before,omitempty"`
+
+	// Limit Number of objects to return (1 to 100). Default is 10.
+	Limit *LimitQueryParam `form:"limit,omitempty" json:"limit,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// CreateCustomerParams defines parameters for CreateCustomer.
+type CreateCustomerParams struct {
+	// IdempotencyKey Unique idempotency key supplied by the client to prevent double charging across network partitions.
+	// Recommended to use a v4 UUID or unique sequence token (max length 255 chars).
+	IdempotencyKey *IdempotencyKeyHeader `json:"Idempotency-Key,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// GetCustomerParams defines parameters for GetCustomer.
+type GetCustomerParams struct {
+	// IfNoneMatch Entity tag (ETag) previously returned by the server. If matched, returns 304 Not Modified.
+	IfNoneMatch *IfNoneMatchHeader `json:"If-None-Match,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// UpdateCustomerParams defines parameters for UpdateCustomer.
+type UpdateCustomerParams struct {
+	// IdempotencyKey Unique idempotency key supplied by the client to prevent double charging across network partitions.
+	// Recommended to use a v4 UUID or unique sequence token (max length 255 chars).
+	IdempotencyKey *IdempotencyKeyHeader `json:"Idempotency-Key,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// CreateMerchantParams defines parameters for CreateMerchant.
+type CreateMerchantParams struct {
+	// IdempotencyKey Unique idempotency key supplied by the client to prevent double charging across network partitions.
+	// Recommended to use a v4 UUID or unique sequence token (max length 255 chars).
+	IdempotencyKey *IdempotencyKeyHeader `json:"Idempotency-Key,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// GetMerchantMeParams defines parameters for GetMerchantMe.
+type GetMerchantMeParams struct {
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
+}
+
+// UpdateMerchantMeParams defines parameters for UpdateMerchantMe.
+type UpdateMerchantMeParams struct {
+	// IdempotencyKey Unique idempotency key supplied by the client to prevent double charging across network partitions.
+	// Recommended to use a v4 UUID or unique sequence token (max length 255 chars).
+	IdempotencyKey *IdempotencyKeyHeader `json:"Idempotency-Key,omitempty"`
+
+	// XRequestId Distributed correlation ID for end-to-end request tracing and observability.
+	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
+
+	// Traceparent W3C Trace Context traceparent header for distributed transaction tracing.
+	Traceparent *TraceparentHeader `json:"traceparent,omitempty"`
 }
 
 // CreatePaymentIntentParams defines parameters for CreatePaymentIntent.
@@ -192,8 +723,32 @@ type CreateWebhookEndpointParams struct {
 	XRequestId *XRequestIdHeader `json:"X-Request-Id,omitempty"`
 }
 
-// CreateAuthTokenJSONRequestBody defines body for CreateAuthToken for application/json ContentType.
-type CreateAuthTokenJSONRequestBody = AuthTokenRequest
+// CreateApiKeyJSONRequestBody defines body for CreateApiKey for application/json ContentType.
+type CreateApiKeyJSONRequestBody = CreateApiKeyRequest
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody = LoginRequest
+
+// LogoutJSONRequestBody defines body for Logout for application/json ContentType.
+type LogoutJSONRequestBody = LogoutRequest
+
+// RefreshTokenJSONRequestBody defines body for RefreshToken for application/json ContentType.
+type RefreshTokenJSONRequestBody = RefreshTokenRequest
+
+// CreateCustomerJSONRequestBody defines body for CreateCustomer for application/json ContentType.
+type CreateCustomerJSONRequestBody = CreateCustomerRequest
+
+// UpdateCustomerJSONRequestBody defines body for UpdateCustomer for application/json ContentType.
+type UpdateCustomerJSONRequestBody = UpdateCustomerRequest
+
+// UpdateCustomerApplicationMergePatchPlusJSONRequestBody defines body for UpdateCustomer for application/merge-patch+json ContentType.
+type UpdateCustomerApplicationMergePatchPlusJSONRequestBody = UpdateCustomerRequest
+
+// CreateMerchantJSONRequestBody defines body for CreateMerchant for application/json ContentType.
+type CreateMerchantJSONRequestBody = CreateMerchantRequest
+
+// UpdateMerchantMeJSONRequestBody defines body for UpdateMerchantMe for application/json ContentType.
+type UpdateMerchantMeJSONRequestBody = UpdateMerchantRequest
 
 // CreatePaymentIntentJSONRequestBody defines body for CreatePaymentIntent for application/json ContentType.
 type CreatePaymentIntentJSONRequestBody = CreatePaymentIntentRequest
@@ -203,12 +758,48 @@ type CreateWebhookEndpointJSONRequestBody = CreateWebhookEndpointRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Issue API session token (Stub)
-	// (POST /auth/tokens)
-	CreateAuthToken(c *gin.Context, params CreateAuthTokenParams)
+	// List merchant API keys
+	// (GET /api-keys)
+	ListApiKeys(c *gin.Context, params ListApiKeysParams)
+	// Provision a new secret API key
+	// (POST /api-keys)
+	CreateApiKey(c *gin.Context, params CreateApiKeyParams)
+	// Revoke an API key
+	// (DELETE /api-keys/{id})
+	RevokeApiKey(c *gin.Context, id string, params RevokeApiKeyParams)
+	// Interactive merchant credentials authentication
+	// (POST /auth/login)
+	Login(c *gin.Context, params LoginParams)
+	// Invalidate active refresh token session
+	// (POST /auth/logout)
+	Logout(c *gin.Context, params LogoutParams)
+	// Refresh expired JWT access token
+	// (POST /auth/refresh)
+	RefreshToken(c *gin.Context, params RefreshTokenParams)
+	// List customer profiles
+	// (GET /customers)
+	ListCustomers(c *gin.Context, params ListCustomersParams)
+	// Create a new customer profile
+	// (POST /customers)
+	CreateCustomer(c *gin.Context, params CreateCustomerParams)
+	// Retrieve a customer profile
+	// (GET /customers/{id})
+	GetCustomer(c *gin.Context, id string, params GetCustomerParams)
+	// Update a customer profile
+	// (PATCH /customers/{id})
+	UpdateCustomer(c *gin.Context, id string, params UpdateCustomerParams)
 	// Health check probe
 	// (GET /healthz)
 	GetHealthz(c *gin.Context)
+	// Register a new merchant account
+	// (POST /merchants)
+	CreateMerchant(c *gin.Context, params CreateMerchantParams)
+	// Retrieve authenticated merchant profile
+	// (GET /merchants/me)
+	GetMerchantMe(c *gin.Context, params GetMerchantMeParams)
+	// Update merchant profile settings
+	// (PATCH /merchants/me)
+	UpdateMerchantMe(c *gin.Context, params UpdateMerchantMeParams)
 	// Create payment intent (Stub)
 	// (POST /payment-intents)
 	CreatePaymentIntent(c *gin.Context, params CreatePaymentIntentParams)
@@ -226,13 +817,39 @@ type ServerInterfaceWrapper struct {
 
 type MiddlewareFunc func(c *gin.Context)
 
-// CreateAuthToken operation middleware
-func (siw *ServerInterfaceWrapper) CreateAuthToken(c *gin.Context) {
+// ListApiKeys operation middleware
+func (siw *ServerInterfaceWrapper) ListApiKeys(c *gin.Context) {
 
 	var err error
 
+	c.Set(BearerJwtScopes, []string{})
+
 	// Parameter object where we will unmarshal all parameters from the context
-	var params CreateAuthTokenParams
+	var params ListApiKeysParams
+
+	// ------------- Optional query parameter "starting_after" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "starting_after", c.Request.URL.Query(), &params.StartingAfter)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter starting_after: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "ending_before" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ending_before", c.Request.URL.Query(), &params.EndingBefore)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter ending_before: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
 
 	headers := c.Request.Header
 
@@ -255,6 +872,25 @@ func (siw *ServerInterfaceWrapper) CreateAuthToken(c *gin.Context) {
 
 	}
 
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
 	for _, middleware := range siw.HandlerMiddlewares {
 		middleware(c)
 		if c.IsAborted() {
@@ -262,7 +898,727 @@ func (siw *ServerInterfaceWrapper) CreateAuthToken(c *gin.Context) {
 		}
 	}
 
-	siw.Handler.CreateAuthToken(c, params)
+	siw.Handler.ListApiKeys(c, params)
+}
+
+// CreateApiKey operation middleware
+func (siw *ServerInterfaceWrapper) CreateApiKey(c *gin.Context) {
+
+	var err error
+
+	c.Set(BearerJwtScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateApiKeyParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateApiKey(c, params)
+}
+
+// RevokeApiKey operation middleware
+func (siw *ServerInterfaceWrapper) RevokeApiKey(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(BearerJwtScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RevokeApiKeyParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RevokeApiKey(c, id, params)
+}
+
+// Login operation middleware
+func (siw *ServerInterfaceWrapper) Login(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LoginParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.Login(c, params)
+}
+
+// Logout operation middleware
+func (siw *ServerInterfaceWrapper) Logout(c *gin.Context) {
+
+	var err error
+
+	c.Set(BearerJwtScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LogoutParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.Logout(c, params)
+}
+
+// RefreshToken operation middleware
+func (siw *ServerInterfaceWrapper) RefreshToken(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RefreshTokenParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.RefreshToken(c, params)
+}
+
+// ListCustomers operation middleware
+func (siw *ServerInterfaceWrapper) ListCustomers(c *gin.Context) {
+
+	var err error
+
+	c.Set(ApiKeyScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params ListCustomersParams
+
+	// ------------- Optional query parameter "starting_after" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "starting_after", c.Request.URL.Query(), &params.StartingAfter)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter starting_after: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "ending_before" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "ending_before", c.Request.URL.Query(), &params.EndingBefore)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter ending_before: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "limit", c.Request.URL.Query(), &params.Limit)
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter limit: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.ListCustomers(c, params)
+}
+
+// CreateCustomer operation middleware
+func (siw *ServerInterfaceWrapper) CreateCustomer(c *gin.Context) {
+
+	var err error
+
+	c.Set(ApiKeyScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateCustomerParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateCustomer(c, params)
+}
+
+// GetCustomer operation middleware
+func (siw *ServerInterfaceWrapper) GetCustomer(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(ApiKeyScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetCustomerParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "If-None-Match" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("If-None-Match")]; found {
+		var IfNoneMatch IfNoneMatchHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for If-None-Match, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "If-None-Match", valueList[0], &IfNoneMatch, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter If-None-Match: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IfNoneMatch = &IfNoneMatch
+
+	}
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetCustomer(c, id, params)
+}
+
+// UpdateCustomer operation middleware
+func (siw *ServerInterfaceWrapper) UpdateCustomer(c *gin.Context) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", c.Param("id"), &id, runtime.BindStyledParameterOptions{Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter id: %w", err), http.StatusBadRequest)
+		return
+	}
+
+	c.Set(ApiKeyScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateCustomerParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateCustomer(c, id, params)
 }
 
 // GetHealthz operation middleware
@@ -278,14 +1634,226 @@ func (siw *ServerInterfaceWrapper) GetHealthz(c *gin.Context) {
 	siw.Handler.GetHealthz(c)
 }
 
+// CreateMerchant operation middleware
+func (siw *ServerInterfaceWrapper) CreateMerchant(c *gin.Context) {
+
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params CreateMerchantParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.CreateMerchant(c, params)
+}
+
+// GetMerchantMe operation middleware
+func (siw *ServerInterfaceWrapper) GetMerchantMe(c *gin.Context) {
+
+	var err error
+
+	c.Set(BearerJwtScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetMerchantMeParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.GetMerchantMe(c, params)
+}
+
+// UpdateMerchantMe operation middleware
+func (siw *ServerInterfaceWrapper) UpdateMerchantMe(c *gin.Context) {
+
+	var err error
+
+	c.Set(BearerJwtScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UpdateMerchantMeParams
+
+	headers := c.Request.Header
+
+	// ------------- Optional header parameter "Idempotency-Key" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("Idempotency-Key")]; found {
+		var IdempotencyKey IdempotencyKeyHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for Idempotency-Key, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "Idempotency-Key", valueList[0], &IdempotencyKey, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter Idempotency-Key: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.IdempotencyKey = &IdempotencyKey
+
+	}
+
+	// ------------- Optional header parameter "X-Request-Id" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("X-Request-Id")]; found {
+		var XRequestId XRequestIdHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for X-Request-Id, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "X-Request-Id", valueList[0], &XRequestId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter X-Request-Id: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.XRequestId = &XRequestId
+
+	}
+
+	// ------------- Optional header parameter "traceparent" -------------
+	if valueList, found := headers[http.CanonicalHeaderKey("traceparent")]; found {
+		var Traceparent TraceparentHeader
+		n := len(valueList)
+		if n != 1 {
+			siw.ErrorHandler(c, fmt.Errorf("Expected one value for traceparent, got %d", n), http.StatusBadRequest)
+			return
+		}
+
+		err = runtime.BindStyledParameterWithOptions("simple", "traceparent", valueList[0], &Traceparent, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationHeader, Explode: false, Required: false})
+		if err != nil {
+			siw.ErrorHandler(c, fmt.Errorf("Invalid format for parameter traceparent: %w", err), http.StatusBadRequest)
+			return
+		}
+
+		params.Traceparent = &Traceparent
+
+	}
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		middleware(c)
+		if c.IsAborted() {
+			return
+		}
+	}
+
+	siw.Handler.UpdateMerchantMe(c, params)
+}
+
 // CreatePaymentIntent operation middleware
 func (siw *ServerInterfaceWrapper) CreatePaymentIntent(c *gin.Context) {
 
 	var err error
-
-	c.Set(BearerAuthScopes, []string{})
-
-	c.Set(ApiKeyAuthScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params CreatePaymentIntentParams
@@ -344,10 +1912,6 @@ func (siw *ServerInterfaceWrapper) CreatePaymentIntent(c *gin.Context) {
 func (siw *ServerInterfaceWrapper) CreateWebhookEndpoint(c *gin.Context) {
 
 	var err error
-
-	c.Set(BearerAuthScopes, []string{})
-
-	c.Set(ApiKeyAuthScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params CreateWebhookEndpointParams
@@ -410,55 +1974,1042 @@ func RegisterHandlersWithOptions(router gin.IRouter, si ServerInterface, options
 		ErrorHandler:       errorHandler,
 	}
 
-	router.POST(options.BaseURL+"/auth/tokens", wrapper.CreateAuthToken)
+	router.GET(options.BaseURL+"/api-keys", wrapper.ListApiKeys)
+	router.POST(options.BaseURL+"/api-keys", wrapper.CreateApiKey)
+	router.DELETE(options.BaseURL+"/api-keys/:id", wrapper.RevokeApiKey)
+	router.POST(options.BaseURL+"/auth/login", wrapper.Login)
+	router.POST(options.BaseURL+"/auth/logout", wrapper.Logout)
+	router.POST(options.BaseURL+"/auth/refresh", wrapper.RefreshToken)
+	router.GET(options.BaseURL+"/customers", wrapper.ListCustomers)
+	router.POST(options.BaseURL+"/customers", wrapper.CreateCustomer)
+	router.GET(options.BaseURL+"/customers/:id", wrapper.GetCustomer)
+	router.PATCH(options.BaseURL+"/customers/:id", wrapper.UpdateCustomer)
 	router.GET(options.BaseURL+"/healthz", wrapper.GetHealthz)
+	router.POST(options.BaseURL+"/merchants", wrapper.CreateMerchant)
+	router.GET(options.BaseURL+"/merchants/me", wrapper.GetMerchantMe)
+	router.PATCH(options.BaseURL+"/merchants/me", wrapper.UpdateMerchantMe)
 	router.POST(options.BaseURL+"/payment-intents", wrapper.CreatePaymentIntent)
 	router.POST(options.BaseURL+"/webhook-endpoints", wrapper.CreateWebhookEndpoint)
 }
 
-type CreateAuthTokenRequestObject struct {
-	Params CreateAuthTokenParams
-	Body   *CreateAuthTokenJSONRequestBody
+type ListApiKeysRequestObject struct {
+	Params ListApiKeysParams
 }
 
-type CreateAuthTokenResponseObject interface {
-	VisitCreateAuthTokenResponse(w http.ResponseWriter) error
+type ListApiKeysResponseObject interface {
+	VisitListApiKeysResponse(w http.ResponseWriter) error
 }
 
-type CreateAuthToken201JSONResponse AuthTokenResponse
+type ListApiKeys200ResponseHeaders struct {
+	CacheControl string
+	XRequestId   openapi_types.UUID
+}
 
-func (response CreateAuthToken201JSONResponse) VisitCreateAuthTokenResponse(w http.ResponseWriter) error {
+type ListApiKeys200JSONResponse struct {
+	Body    ApiKeyListResponse
+	Headers ListApiKeys200ResponseHeaders
+}
+
+func (response ListApiKeys200JSONResponse) VisitListApiKeysResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(201)
+	w.Header().Set("Cache-Control", fmt.Sprint(response.Headers.CacheControl))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(200)
 
-	return json.NewEncoder(w).Encode(response)
+	return json.NewEncoder(w).Encode(response.Body)
 }
 
-type CreateAuthToken400ApplicationProblemPlusJSONResponse ProblemDocument
-
-func (response CreateAuthToken400ApplicationProblemPlusJSONResponse) VisitCreateAuthTokenResponse(w http.ResponseWriter) error {
-	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(400)
-
-	return json.NewEncoder(w).Encode(response)
+type ListApiKeys401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
 }
 
-type CreateAuthToken401ApplicationProblemPlusJSONResponse ProblemDocument
+type ListApiKeys401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers ListApiKeys401ResponseHeaders
+}
 
-func (response CreateAuthToken401ApplicationProblemPlusJSONResponse) VisitCreateAuthTokenResponse(w http.ResponseWriter) error {
+func (response ListApiKeys401ApplicationProblemPlusJSONResponse) VisitListApiKeysResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
 	w.WriteHeader(401)
 
-	return json.NewEncoder(w).Encode(response)
+	return json.NewEncoder(w).Encode(response.Body)
 }
 
-type CreateAuthToken501ApplicationProblemPlusJSONResponse ProblemDocument
+type ListApiKeys403ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
 
-func (response CreateAuthToken501ApplicationProblemPlusJSONResponse) VisitCreateAuthTokenResponse(w http.ResponseWriter) error {
+type ListApiKeys403ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers ListApiKeys403ResponseHeaders
+}
+
+func (response ListApiKeys403ApplicationProblemPlusJSONResponse) VisitListApiKeysResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/problem+json")
-	w.WriteHeader(501)
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(403)
 
-	return json.NewEncoder(w).Encode(response)
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ListApiKeys429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type ListApiKeys429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers ListApiKeys429ResponseHeaders
+}
+
+func (response ListApiKeys429ApplicationProblemPlusJSONResponse) VisitListApiKeysResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ListApiKeys500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type ListApiKeys500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers ListApiKeys500ResponseHeaders
+}
+
+func (response ListApiKeys500ApplicationProblemPlusJSONResponse) VisitListApiKeysResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateApiKeyRequestObject struct {
+	Params CreateApiKeyParams
+	Body   *CreateApiKeyJSONRequestBody
+}
+
+type CreateApiKeyResponseObject interface {
+	VisitCreateApiKeyResponse(w http.ResponseWriter) error
+}
+
+type CreateApiKey201ResponseHeaders struct {
+	CacheControl string
+	XRequestId   openapi_types.UUID
+}
+
+type CreateApiKey201JSONResponse struct {
+	Body    CreateApiKeyResponse
+	Headers CreateApiKey201ResponseHeaders
+}
+
+func (response CreateApiKey201JSONResponse) VisitCreateApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprint(response.Headers.CacheControl))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateApiKey400ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateApiKey400ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateApiKey400ResponseHeaders
+}
+
+func (response CreateApiKey400ApplicationProblemPlusJSONResponse) VisitCreateApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateApiKey401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateApiKey401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateApiKey401ResponseHeaders
+}
+
+func (response CreateApiKey401ApplicationProblemPlusJSONResponse) VisitCreateApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateApiKey403ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateApiKey403ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateApiKey403ResponseHeaders
+}
+
+func (response CreateApiKey403ApplicationProblemPlusJSONResponse) VisitCreateApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateApiKey429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type CreateApiKey429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateApiKey429ResponseHeaders
+}
+
+func (response CreateApiKey429ApplicationProblemPlusJSONResponse) VisitCreateApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateApiKey500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateApiKey500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateApiKey500ResponseHeaders
+}
+
+func (response CreateApiKey500ApplicationProblemPlusJSONResponse) VisitCreateApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RevokeApiKeyRequestObject struct {
+	Id     string `json:"id"`
+	Params RevokeApiKeyParams
+}
+
+type RevokeApiKeyResponseObject interface {
+	VisitRevokeApiKeyResponse(w http.ResponseWriter) error
+}
+
+type RevokeApiKey204ResponseHeaders struct {
+	CacheControl string
+	XRequestId   openapi_types.UUID
+}
+
+type RevokeApiKey204Response struct {
+	Headers RevokeApiKey204ResponseHeaders
+}
+
+func (response RevokeApiKey204Response) VisitRevokeApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Cache-Control", fmt.Sprint(response.Headers.CacheControl))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(204)
+	return nil
+}
+
+type RevokeApiKey401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type RevokeApiKey401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers RevokeApiKey401ResponseHeaders
+}
+
+func (response RevokeApiKey401ApplicationProblemPlusJSONResponse) VisitRevokeApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RevokeApiKey403ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type RevokeApiKey403ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers RevokeApiKey403ResponseHeaders
+}
+
+func (response RevokeApiKey403ApplicationProblemPlusJSONResponse) VisitRevokeApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(403)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RevokeApiKey404ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type RevokeApiKey404ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers RevokeApiKey404ResponseHeaders
+}
+
+func (response RevokeApiKey404ApplicationProblemPlusJSONResponse) VisitRevokeApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RevokeApiKey429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type RevokeApiKey429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers RevokeApiKey429ResponseHeaders
+}
+
+func (response RevokeApiKey429ApplicationProblemPlusJSONResponse) VisitRevokeApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RevokeApiKey500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type RevokeApiKey500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers RevokeApiKey500ResponseHeaders
+}
+
+func (response RevokeApiKey500ApplicationProblemPlusJSONResponse) VisitRevokeApiKeyResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type LoginRequestObject struct {
+	Params LoginParams
+	Body   *LoginJSONRequestBody
+}
+
+type LoginResponseObject interface {
+	VisitLoginResponse(w http.ResponseWriter) error
+}
+
+type Login200ResponseHeaders struct {
+	CacheControl string
+	XRequestId   openapi_types.UUID
+}
+
+type Login200JSONResponse struct {
+	Body    LoginResponse
+	Headers Login200ResponseHeaders
+}
+
+func (response Login200JSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprint(response.Headers.CacheControl))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type Login400ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type Login400ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers Login400ResponseHeaders
+}
+
+func (response Login400ApplicationProblemPlusJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type Login401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type Login401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers Login401ResponseHeaders
+}
+
+func (response Login401ApplicationProblemPlusJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type Login429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type Login429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers Login429ResponseHeaders
+}
+
+func (response Login429ApplicationProblemPlusJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type Login500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type Login500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers Login500ResponseHeaders
+}
+
+func (response Login500ApplicationProblemPlusJSONResponse) VisitLoginResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type LogoutRequestObject struct {
+	Params LogoutParams
+	Body   *LogoutJSONRequestBody
+}
+
+type LogoutResponseObject interface {
+	VisitLogoutResponse(w http.ResponseWriter) error
+}
+
+type Logout204ResponseHeaders struct {
+	CacheControl string
+	XRequestId   openapi_types.UUID
+}
+
+type Logout204Response struct {
+	Headers Logout204ResponseHeaders
+}
+
+func (response Logout204Response) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Cache-Control", fmt.Sprint(response.Headers.CacheControl))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(204)
+	return nil
+}
+
+type Logout401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type Logout401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers Logout401ResponseHeaders
+}
+
+func (response Logout401ApplicationProblemPlusJSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type Logout429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type Logout429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers Logout429ResponseHeaders
+}
+
+func (response Logout429ApplicationProblemPlusJSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type Logout500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type Logout500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers Logout500ResponseHeaders
+}
+
+func (response Logout500ApplicationProblemPlusJSONResponse) VisitLogoutResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RefreshTokenRequestObject struct {
+	Params RefreshTokenParams
+	Body   *RefreshTokenJSONRequestBody
+}
+
+type RefreshTokenResponseObject interface {
+	VisitRefreshTokenResponse(w http.ResponseWriter) error
+}
+
+type RefreshToken200ResponseHeaders struct {
+	CacheControl string
+	XRequestId   openapi_types.UUID
+}
+
+type RefreshToken200JSONResponse struct {
+	Body    RefreshTokenResponse
+	Headers RefreshToken200ResponseHeaders
+}
+
+func (response RefreshToken200JSONResponse) VisitRefreshTokenResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", fmt.Sprint(response.Headers.CacheControl))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RefreshToken400ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type RefreshToken400ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers RefreshToken400ResponseHeaders
+}
+
+func (response RefreshToken400ApplicationProblemPlusJSONResponse) VisitRefreshTokenResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RefreshToken401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type RefreshToken401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers RefreshToken401ResponseHeaders
+}
+
+func (response RefreshToken401ApplicationProblemPlusJSONResponse) VisitRefreshTokenResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RefreshToken429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type RefreshToken429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers RefreshToken429ResponseHeaders
+}
+
+func (response RefreshToken429ApplicationProblemPlusJSONResponse) VisitRefreshTokenResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type RefreshToken500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type RefreshToken500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers RefreshToken500ResponseHeaders
+}
+
+func (response RefreshToken500ApplicationProblemPlusJSONResponse) VisitRefreshTokenResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ListCustomersRequestObject struct {
+	Params ListCustomersParams
+}
+
+type ListCustomersResponseObject interface {
+	VisitListCustomersResponse(w http.ResponseWriter) error
+}
+
+type ListCustomers200ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type ListCustomers200JSONResponse struct {
+	Body    CustomerListResponse
+	Headers ListCustomers200ResponseHeaders
+}
+
+func (response ListCustomers200JSONResponse) VisitListCustomersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ListCustomers400ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type ListCustomers400ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers ListCustomers400ResponseHeaders
+}
+
+func (response ListCustomers400ApplicationProblemPlusJSONResponse) VisitListCustomersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ListCustomers401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type ListCustomers401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers ListCustomers401ResponseHeaders
+}
+
+func (response ListCustomers401ApplicationProblemPlusJSONResponse) VisitListCustomersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ListCustomers429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type ListCustomers429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers ListCustomers429ResponseHeaders
+}
+
+func (response ListCustomers429ApplicationProblemPlusJSONResponse) VisitListCustomersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type ListCustomers500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type ListCustomers500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers ListCustomers500ResponseHeaders
+}
+
+func (response ListCustomers500ApplicationProblemPlusJSONResponse) VisitListCustomersResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateCustomerRequestObject struct {
+	Params CreateCustomerParams
+	Body   *CreateCustomerJSONRequestBody
+}
+
+type CreateCustomerResponseObject interface {
+	VisitCreateCustomerResponse(w http.ResponseWriter) error
+}
+
+type CreateCustomer201ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateCustomer201JSONResponse struct {
+	Body    Customer
+	Headers CreateCustomer201ResponseHeaders
+}
+
+func (response CreateCustomer201JSONResponse) VisitCreateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateCustomer400ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateCustomer400ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateCustomer400ResponseHeaders
+}
+
+func (response CreateCustomer400ApplicationProblemPlusJSONResponse) VisitCreateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateCustomer401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateCustomer401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateCustomer401ResponseHeaders
+}
+
+func (response CreateCustomer401ApplicationProblemPlusJSONResponse) VisitCreateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateCustomer429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type CreateCustomer429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateCustomer429ResponseHeaders
+}
+
+func (response CreateCustomer429ApplicationProblemPlusJSONResponse) VisitCreateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateCustomer500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateCustomer500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateCustomer500ResponseHeaders
+}
+
+func (response CreateCustomer500ApplicationProblemPlusJSONResponse) VisitCreateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetCustomerRequestObject struct {
+	Id     string `json:"id"`
+	Params GetCustomerParams
+}
+
+type GetCustomerResponseObject interface {
+	VisitGetCustomerResponse(w http.ResponseWriter) error
+}
+
+type GetCustomer200ResponseHeaders struct {
+	ETag       string
+	XRequestId openapi_types.UUID
+}
+
+type GetCustomer200JSONResponse struct {
+	Body    Customer
+	Headers GetCustomer200ResponseHeaders
+}
+
+func (response GetCustomer200JSONResponse) VisitGetCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("ETag", fmt.Sprint(response.Headers.ETag))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetCustomer304ResponseHeaders struct {
+	ETag       string
+	XRequestId openapi_types.UUID
+}
+
+type GetCustomer304Response struct {
+	Headers GetCustomer304ResponseHeaders
+}
+
+func (response GetCustomer304Response) VisitGetCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("ETag", fmt.Sprint(response.Headers.ETag))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(304)
+	return nil
+}
+
+type GetCustomer401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type GetCustomer401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers GetCustomer401ResponseHeaders
+}
+
+func (response GetCustomer401ApplicationProblemPlusJSONResponse) VisitGetCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetCustomer404ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type GetCustomer404ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers GetCustomer404ResponseHeaders
+}
+
+func (response GetCustomer404ApplicationProblemPlusJSONResponse) VisitGetCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetCustomer429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type GetCustomer429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers GetCustomer429ResponseHeaders
+}
+
+func (response GetCustomer429ApplicationProblemPlusJSONResponse) VisitGetCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetCustomer500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type GetCustomer500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers GetCustomer500ResponseHeaders
+}
+
+func (response GetCustomer500ApplicationProblemPlusJSONResponse) VisitGetCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateCustomerRequestObject struct {
+	Id                                string `json:"id"`
+	Params                            UpdateCustomerParams
+	JSONBody                          *UpdateCustomerJSONRequestBody
+	ApplicationMergePatchPlusJSONBody *UpdateCustomerApplicationMergePatchPlusJSONRequestBody
+}
+
+type UpdateCustomerResponseObject interface {
+	VisitUpdateCustomerResponse(w http.ResponseWriter) error
+}
+
+type UpdateCustomer200ResponseHeaders struct {
+	ETag       string
+	XRequestId openapi_types.UUID
+}
+
+type UpdateCustomer200JSONResponse struct {
+	Body    Customer
+	Headers UpdateCustomer200ResponseHeaders
+}
+
+func (response UpdateCustomer200JSONResponse) VisitUpdateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("ETag", fmt.Sprint(response.Headers.ETag))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateCustomer400ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type UpdateCustomer400ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers UpdateCustomer400ResponseHeaders
+}
+
+func (response UpdateCustomer400ApplicationProblemPlusJSONResponse) VisitUpdateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateCustomer401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type UpdateCustomer401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers UpdateCustomer401ResponseHeaders
+}
+
+func (response UpdateCustomer401ApplicationProblemPlusJSONResponse) VisitUpdateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateCustomer404ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type UpdateCustomer404ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers UpdateCustomer404ResponseHeaders
+}
+
+func (response UpdateCustomer404ApplicationProblemPlusJSONResponse) VisitUpdateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateCustomer429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type UpdateCustomer429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers UpdateCustomer429ResponseHeaders
+}
+
+func (response UpdateCustomer429ApplicationProblemPlusJSONResponse) VisitUpdateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateCustomer500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type UpdateCustomer500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers UpdateCustomer500ResponseHeaders
+}
+
+func (response UpdateCustomer500ApplicationProblemPlusJSONResponse) VisitUpdateCustomerResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
 }
 
 type GetHealthzRequestObject struct {
@@ -493,6 +3044,276 @@ func (response GetHealthz503ApplicationProblemPlusJSONResponse) VisitGetHealthzR
 	w.WriteHeader(503)
 
 	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateMerchantRequestObject struct {
+	Params CreateMerchantParams
+	Body   *CreateMerchantJSONRequestBody
+}
+
+type CreateMerchantResponseObject interface {
+	VisitCreateMerchantResponse(w http.ResponseWriter) error
+}
+
+type CreateMerchant201ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateMerchant201JSONResponse struct {
+	Body    Merchant
+	Headers CreateMerchant201ResponseHeaders
+}
+
+func (response CreateMerchant201JSONResponse) VisitCreateMerchantResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(201)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateMerchant400ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateMerchant400ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateMerchant400ResponseHeaders
+}
+
+func (response CreateMerchant400ApplicationProblemPlusJSONResponse) VisitCreateMerchantResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateMerchant409ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateMerchant409ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateMerchant409ResponseHeaders
+}
+
+func (response CreateMerchant409ApplicationProblemPlusJSONResponse) VisitCreateMerchantResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(409)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateMerchant429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type CreateMerchant429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateMerchant429ResponseHeaders
+}
+
+func (response CreateMerchant429ApplicationProblemPlusJSONResponse) VisitCreateMerchantResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type CreateMerchant500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type CreateMerchant500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers CreateMerchant500ResponseHeaders
+}
+
+func (response CreateMerchant500ApplicationProblemPlusJSONResponse) VisitCreateMerchantResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetMerchantMeRequestObject struct {
+	Params GetMerchantMeParams
+}
+
+type GetMerchantMeResponseObject interface {
+	VisitGetMerchantMeResponse(w http.ResponseWriter) error
+}
+
+type GetMerchantMe200ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type GetMerchantMe200JSONResponse struct {
+	Body    Merchant
+	Headers GetMerchantMe200ResponseHeaders
+}
+
+func (response GetMerchantMe200JSONResponse) VisitGetMerchantMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetMerchantMe401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type GetMerchantMe401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers GetMerchantMe401ResponseHeaders
+}
+
+func (response GetMerchantMe401ApplicationProblemPlusJSONResponse) VisitGetMerchantMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetMerchantMe429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type GetMerchantMe429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers GetMerchantMe429ResponseHeaders
+}
+
+func (response GetMerchantMe429ApplicationProblemPlusJSONResponse) VisitGetMerchantMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type GetMerchantMe500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type GetMerchantMe500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers GetMerchantMe500ResponseHeaders
+}
+
+func (response GetMerchantMe500ApplicationProblemPlusJSONResponse) VisitGetMerchantMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateMerchantMeRequestObject struct {
+	Params UpdateMerchantMeParams
+	Body   *UpdateMerchantMeJSONRequestBody
+}
+
+type UpdateMerchantMeResponseObject interface {
+	VisitUpdateMerchantMeResponse(w http.ResponseWriter) error
+}
+
+type UpdateMerchantMe200ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type UpdateMerchantMe200JSONResponse struct {
+	Body    Merchant
+	Headers UpdateMerchantMe200ResponseHeaders
+}
+
+func (response UpdateMerchantMe200JSONResponse) VisitUpdateMerchantMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateMerchantMe400ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type UpdateMerchantMe400ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers UpdateMerchantMe400ResponseHeaders
+}
+
+func (response UpdateMerchantMe400ApplicationProblemPlusJSONResponse) VisitUpdateMerchantMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(400)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateMerchantMe401ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type UpdateMerchantMe401ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers UpdateMerchantMe401ResponseHeaders
+}
+
+func (response UpdateMerchantMe401ApplicationProblemPlusJSONResponse) VisitUpdateMerchantMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(401)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateMerchantMe429ResponseHeaders struct {
+	RetryAfter int
+	XRequestId openapi_types.UUID
+}
+
+type UpdateMerchantMe429ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers UpdateMerchantMe429ResponseHeaders
+}
+
+func (response UpdateMerchantMe429ApplicationProblemPlusJSONResponse) VisitUpdateMerchantMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("Retry-After", fmt.Sprint(response.Headers.RetryAfter))
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(429)
+
+	return json.NewEncoder(w).Encode(response.Body)
+}
+
+type UpdateMerchantMe500ResponseHeaders struct {
+	XRequestId openapi_types.UUID
+}
+
+type UpdateMerchantMe500ApplicationProblemPlusJSONResponse struct {
+	Body    ProblemDocument
+	Headers UpdateMerchantMe500ResponseHeaders
+}
+
+func (response UpdateMerchantMe500ApplicationProblemPlusJSONResponse) VisitUpdateMerchantMeResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/problem+json")
+	w.Header().Set("X-Request-Id", fmt.Sprint(response.Headers.XRequestId))
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response.Body)
 }
 
 type CreatePaymentIntentRequestObject struct {
@@ -578,12 +3399,48 @@ func (response CreateWebhookEndpoint501ApplicationProblemPlusJSONResponse) Visit
 
 // StrictServerInterface represents all server handlers.
 type StrictServerInterface interface {
-	// Issue API session token (Stub)
-	// (POST /auth/tokens)
-	CreateAuthToken(ctx context.Context, request CreateAuthTokenRequestObject) (CreateAuthTokenResponseObject, error)
+	// List merchant API keys
+	// (GET /api-keys)
+	ListApiKeys(ctx context.Context, request ListApiKeysRequestObject) (ListApiKeysResponseObject, error)
+	// Provision a new secret API key
+	// (POST /api-keys)
+	CreateApiKey(ctx context.Context, request CreateApiKeyRequestObject) (CreateApiKeyResponseObject, error)
+	// Revoke an API key
+	// (DELETE /api-keys/{id})
+	RevokeApiKey(ctx context.Context, request RevokeApiKeyRequestObject) (RevokeApiKeyResponseObject, error)
+	// Interactive merchant credentials authentication
+	// (POST /auth/login)
+	Login(ctx context.Context, request LoginRequestObject) (LoginResponseObject, error)
+	// Invalidate active refresh token session
+	// (POST /auth/logout)
+	Logout(ctx context.Context, request LogoutRequestObject) (LogoutResponseObject, error)
+	// Refresh expired JWT access token
+	// (POST /auth/refresh)
+	RefreshToken(ctx context.Context, request RefreshTokenRequestObject) (RefreshTokenResponseObject, error)
+	// List customer profiles
+	// (GET /customers)
+	ListCustomers(ctx context.Context, request ListCustomersRequestObject) (ListCustomersResponseObject, error)
+	// Create a new customer profile
+	// (POST /customers)
+	CreateCustomer(ctx context.Context, request CreateCustomerRequestObject) (CreateCustomerResponseObject, error)
+	// Retrieve a customer profile
+	// (GET /customers/{id})
+	GetCustomer(ctx context.Context, request GetCustomerRequestObject) (GetCustomerResponseObject, error)
+	// Update a customer profile
+	// (PATCH /customers/{id})
+	UpdateCustomer(ctx context.Context, request UpdateCustomerRequestObject) (UpdateCustomerResponseObject, error)
 	// Health check probe
 	// (GET /healthz)
 	GetHealthz(ctx context.Context, request GetHealthzRequestObject) (GetHealthzResponseObject, error)
+	// Register a new merchant account
+	// (POST /merchants)
+	CreateMerchant(ctx context.Context, request CreateMerchantRequestObject) (CreateMerchantResponseObject, error)
+	// Retrieve authenticated merchant profile
+	// (GET /merchants/me)
+	GetMerchantMe(ctx context.Context, request GetMerchantMeRequestObject) (GetMerchantMeResponseObject, error)
+	// Update merchant profile settings
+	// (PATCH /merchants/me)
+	UpdateMerchantMe(ctx context.Context, request UpdateMerchantMeRequestObject) (UpdateMerchantMeResponseObject, error)
 	// Create payment intent (Stub)
 	// (POST /payment-intents)
 	CreatePaymentIntent(ctx context.Context, request CreatePaymentIntentRequestObject) (CreatePaymentIntentResponseObject, error)
@@ -604,13 +3461,40 @@ type strictHandler struct {
 	middlewares []StrictMiddlewareFunc
 }
 
-// CreateAuthToken operation middleware
-func (sh *strictHandler) CreateAuthToken(ctx *gin.Context, params CreateAuthTokenParams) {
-	var request CreateAuthTokenRequestObject
+// ListApiKeys operation middleware
+func (sh *strictHandler) ListApiKeys(ctx *gin.Context, params ListApiKeysParams) {
+	var request ListApiKeysRequestObject
 
 	request.Params = params
 
-	var body CreateAuthTokenJSONRequestBody
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListApiKeys(ctx, request.(ListApiKeysRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListApiKeys")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(ListApiKeysResponseObject); ok {
+		if err := validResponse.VisitListApiKeysResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateApiKey operation middleware
+func (sh *strictHandler) CreateApiKey(ctx *gin.Context, params CreateApiKeyParams) {
+	var request CreateApiKeyRequestObject
+
+	request.Params = params
+
+	var body CreateApiKeyJSONRequestBody
 	if err := ctx.ShouldBindJSON(&body); err != nil {
 		ctx.Status(http.StatusBadRequest)
 		ctx.Error(err)
@@ -619,10 +3503,10 @@ func (sh *strictHandler) CreateAuthToken(ctx *gin.Context, params CreateAuthToke
 	request.Body = &body
 
 	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
-		return sh.ssi.CreateAuthToken(ctx, request.(CreateAuthTokenRequestObject))
+		return sh.ssi.CreateApiKey(ctx, request.(CreateApiKeyRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "CreateAuthToken")
+		handler = middleware(handler, "CreateApiKey")
 	}
 
 	response, err := handler(ctx, request)
@@ -630,8 +3514,279 @@ func (sh *strictHandler) CreateAuthToken(ctx *gin.Context, params CreateAuthToke
 	if err != nil {
 		ctx.Error(err)
 		ctx.Status(http.StatusInternalServerError)
-	} else if validResponse, ok := response.(CreateAuthTokenResponseObject); ok {
-		if err := validResponse.VisitCreateAuthTokenResponse(ctx.Writer); err != nil {
+	} else if validResponse, ok := response.(CreateApiKeyResponseObject); ok {
+		if err := validResponse.VisitCreateApiKeyResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RevokeApiKey operation middleware
+func (sh *strictHandler) RevokeApiKey(ctx *gin.Context, id string, params RevokeApiKeyParams) {
+	var request RevokeApiKeyRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RevokeApiKey(ctx, request.(RevokeApiKeyRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevokeApiKey")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(RevokeApiKeyResponseObject); ok {
+		if err := validResponse.VisitRevokeApiKeyResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Login operation middleware
+func (sh *strictHandler) Login(ctx *gin.Context, params LoginParams) {
+	var request LoginRequestObject
+
+	request.Params = params
+
+	var body LoginJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.Login(ctx, request.(LoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Login")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(LoginResponseObject); ok {
+		if err := validResponse.VisitLoginResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// Logout operation middleware
+func (sh *strictHandler) Logout(ctx *gin.Context, params LogoutParams) {
+	var request LogoutRequestObject
+
+	request.Params = params
+
+	var body LogoutJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.Logout(ctx, request.(LogoutRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Logout")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(LogoutResponseObject); ok {
+		if err := validResponse.VisitLogoutResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RefreshToken operation middleware
+func (sh *strictHandler) RefreshToken(ctx *gin.Context, params RefreshTokenParams) {
+	var request RefreshTokenRequestObject
+
+	request.Params = params
+
+	var body RefreshTokenJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.RefreshToken(ctx, request.(RefreshTokenRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RefreshToken")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(RefreshTokenResponseObject); ok {
+		if err := validResponse.VisitRefreshTokenResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListCustomers operation middleware
+func (sh *strictHandler) ListCustomers(ctx *gin.Context, params ListCustomersParams) {
+	var request ListCustomersRequestObject
+
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.ListCustomers(ctx, request.(ListCustomersRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListCustomers")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(ListCustomersResponseObject); ok {
+		if err := validResponse.VisitListCustomersResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateCustomer operation middleware
+func (sh *strictHandler) CreateCustomer(ctx *gin.Context, params CreateCustomerParams) {
+	var request CreateCustomerRequestObject
+
+	request.Params = params
+
+	var body CreateCustomerJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCustomer(ctx, request.(CreateCustomerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCustomer")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(CreateCustomerResponseObject); ok {
+		if err := validResponse.VisitCreateCustomerResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetCustomer operation middleware
+func (sh *strictHandler) GetCustomer(ctx *gin.Context, id string, params GetCustomerParams) {
+	var request GetCustomerRequestObject
+
+	request.Id = id
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCustomer(ctx, request.(GetCustomerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCustomer")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(GetCustomerResponseObject); ok {
+		if err := validResponse.VisitGetCustomerResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateCustomer operation middleware
+func (sh *strictHandler) UpdateCustomer(ctx *gin.Context, id string, params UpdateCustomerParams) {
+	var request UpdateCustomerRequestObject
+
+	request.Id = id
+	request.Params = params
+	if strings.HasPrefix(ctx.GetHeader("Content-Type"), "application/json") {
+
+		var body UpdateCustomerJSONRequestBody
+		if err := ctx.ShouldBindJSON(&body); err != nil {
+			ctx.Status(http.StatusBadRequest)
+			ctx.Error(err)
+			return
+		}
+		request.JSONBody = &body
+	}
+	if strings.HasPrefix(ctx.GetHeader("Content-Type"), "application/merge-patch+json") {
+
+		var body UpdateCustomerApplicationMergePatchPlusJSONRequestBody
+		if err := ctx.ShouldBindJSON(&body); err != nil {
+			ctx.Status(http.StatusBadRequest)
+			ctx.Error(err)
+			return
+		}
+		request.ApplicationMergePatchPlusJSONBody = &body
+	}
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateCustomer(ctx, request.(UpdateCustomerRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateCustomer")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(UpdateCustomerResponseObject); ok {
+		if err := validResponse.VisitUpdateCustomerResponse(ctx.Writer); err != nil {
 			ctx.Error(err)
 		}
 	} else if response != nil {
@@ -657,6 +3812,103 @@ func (sh *strictHandler) GetHealthz(ctx *gin.Context) {
 		ctx.Status(http.StatusInternalServerError)
 	} else if validResponse, ok := response.(GetHealthzResponseObject); ok {
 		if err := validResponse.VisitGetHealthzResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateMerchant operation middleware
+func (sh *strictHandler) CreateMerchant(ctx *gin.Context, params CreateMerchantParams) {
+	var request CreateMerchantRequestObject
+
+	request.Params = params
+
+	var body CreateMerchantJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateMerchant(ctx, request.(CreateMerchantRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateMerchant")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(CreateMerchantResponseObject); ok {
+		if err := validResponse.VisitCreateMerchantResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetMerchantMe operation middleware
+func (sh *strictHandler) GetMerchantMe(ctx *gin.Context, params GetMerchantMeParams) {
+	var request GetMerchantMeRequestObject
+
+	request.Params = params
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetMerchantMe(ctx, request.(GetMerchantMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetMerchantMe")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(GetMerchantMeResponseObject); ok {
+		if err := validResponse.VisitGetMerchantMeResponse(ctx.Writer); err != nil {
+			ctx.Error(err)
+		}
+	} else if response != nil {
+		ctx.Error(fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateMerchantMe operation middleware
+func (sh *strictHandler) UpdateMerchantMe(ctx *gin.Context, params UpdateMerchantMeParams) {
+	var request UpdateMerchantMeRequestObject
+
+	request.Params = params
+
+	var body UpdateMerchantMeJSONRequestBody
+	if err := ctx.ShouldBindJSON(&body); err != nil {
+		ctx.Status(http.StatusBadRequest)
+		ctx.Error(err)
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx *gin.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateMerchantMe(ctx, request.(UpdateMerchantMeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateMerchantMe")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		ctx.Error(err)
+		ctx.Status(http.StatusInternalServerError)
+	} else if validResponse, ok := response.(UpdateMerchantMeResponseObject); ok {
+		if err := validResponse.VisitUpdateMerchantMeResponse(ctx.Writer); err != nil {
 			ctx.Error(err)
 		}
 	} else if response != nil {
@@ -737,54 +3989,155 @@ func (sh *strictHandler) CreateWebhookEndpoint(ctx *gin.Context, params CreateWe
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"H4sIAAAAAAAC/+x9e1NbObbvV9H1PVUH+tjGvBumbtUkkO64OyQMkOk+0+SCvPeyrWFb2iNpQzxdfJj5",
+	"LLfqfq5Ta0naL2/bQEhIZ/gLbO+HHktr/fRbD/3eitQkVRKkNa3931tj4DFo+veAR2M4UNJqlbxVp1Zp",
+	"OAGTKmngNV2FF8VgIi1SK5Rs7beONVzjk5gBaYQV18AiDTFIK3himNLMgDFCSWbVFUjDhlpN2ACEHLEI",
+	"XxezwZQJaUFPIBbcAku1+iiA7o0SgQ/vttotE41hwrEB8JFP0gRa+y2pOgYb2Wq37DTFb4zVQo5at7ft",
+	"1qszPlrW+lfSCjtllo+YhlSDwXZjyzKtQVpmLDZIDZkdA9NgVKYjYENsmZKxwKfwhPoh5GheK89bUWYu",
+	"euuvf/3b9k8vXh6sb2xuXVyvn7cam30CVk9fDC3oZY1/m00GoLF1BrA5hlrphoyZscqSmA14dMXUcMgG",
+	"MFQa+2D1FHtIHeIWOomYCAsx0/CPDIyd04mdXt5WnKsRaGrsryfurn68rLGHAvs4yPBVkdIaEo6/sP4h",
+	"DacaGNDXfCASYafzBnJnwHcH36/3Onsxjzvr6/F65/veYKvT60W9rWG8tdmLvm+1W0OlJ9y29ltZJuKG",
+	"Mb5tt1Ku+QSsF/tXMhZy9JJG6C8Z6Okx/jzbhxcoF0ZpajGO7A3XMUv5SEjXGSFjEXGSID/eN2MRjZka",
+	"/B0ii321ig3BRuPuuTzmxs1Y/zBI2FBoY5mwMGFCutn0gpjyEeDNkl+LEcpkeL3pnsuXMObXAkdRshgS",
+	"oDGmlu6zV9c8ybgFwy5FzM6zXm8zYkAdvnBtvGSx0BDZZIr3T5RUVkkRMaO05YME24cvabVbAgfhHzhA",
+	"rXZL8gmOauVRc+ZtVvy3d3a/3+u5/xpXQT+GSaosyGj6M0znCdV7Kf6RARPFxewKpsxkaZoIp1lKS8Iq",
+	"ljptxWKVYc+iMdcjnC0eaWUMk2BvlL5iKdeWFjd2/AQiNZmAjCHGR2QGGGfXW+z9e5w4zTLXCIMrQUbg",
+	"9BxbmfCPLAE5smO2sb1NrzKrpXF0arcYyFKPOz/DdM5Q7g3WYxhsxZ3NwW7c2RrwuLM3iOPOxqAX7w42",
+	"42iwgyI/4R/f0Ltb+xvb240DPHyrJBxxG43voBxXUJmu0vAJlZlkiook07IYY1y+oLusP2QTfCjEbX+N",
+	"YZu9LfZWWXakYjEUEC8ahWEH29Whhj2KPn2D+m3Rqi7UqFumBmfZNZ2trOOH9V5vtcsOYcizxDJh2Hpv",
+	"/oIgfVppeexubO2v99pFN/DDhH8Uk2yCH/CTkP5To649tSiVckS24c5qaqj0Ai3F8Vn3VFIJr+moIBWk",
+	"pJaoo5cQcVxB/UPDuIaSuuEyZlZMoJPrnRXojrpthpPt9Nb7N/1D+g9W2+dyKBILOM0MZnUcoOmm4bqg",
+	"PpaUHL5omMmI1rezRfQ9agYmhkHtGqXPpYZI6ZgJayAZshtumFFD2wm9UpppmKjrikjX5KHajsfTkGea",
+	"R5BytA7zFvAvmweMLmOI6eCjZba4ibmlR0ISl4yz1VwaTqNDlyOwmb9eSw+c07Ver7M1GO5tDDe3d3cH",
+	"m1sx3+GbEext7MU96MHW7uZOp9cb9nZ2Oe8N+F5vY7Db6a230EhbCxrf+n97vc5vvc4e7ww//L65cVt8",
+	"WN8pfdi4/Y/GoSpQygPRCci4Y1UHZA6TwtCQNFXBy/zB+rXjG9Lpx58d4rinE755kQq0KDO9PgLLY255",
+	"FftyNgEdjTmCSIg0WPbiuI92FWFZqlUK2gqgB0cauIX4AptSf/iZmICxfJKymzE4ReGfQ+toBBIQf8b4",
+	"1KL/G72Nnc56r7Oxedbb2t/q7fd6fyv3N0bIimpittP4mFRoMEuaU9Z52CpsEc+smnArIp4kUzZAiw+G",
+	"CXnNExF32dssSVA1SLgGzfxruvPaJbMkQQXW2rc6g4Z2ingRlJEWjaRbmOVRy7cfKyShCLdjslVOOV7B",
+	"9ELEXvkJyczVRSKu4WL2V/+Vm1yvT6uzgFcvVEelpYnX4gp80fkb7/zzw+8bO+3NnaaF2G6h5dia7fob",
+	"NChbhJB4hJg833DxG4fnnBjigLzvo7JKE+70eBiuiJZrtRN8fbBRhUJbZGNLnxpbeJGZh4k0GUa8mVrK",
+	"MzvGxvmm1WQIL5sv+Tv76xuLJH+phOHMT1QMDX3QmdvA4iW41Y4zp+uvYGrYSpCa71b/xIY8Me5aw2U8",
+	"UB+ZRc2XX4ifLr6rik6lPQOlEuASG+Q0YL0xr7MJlx0NPCaDH2Y24QNIcvn3mqcYqeOi0Qe4x3rJoyuQ",
+	"d4C9qL5gKD7ONuRnmDKQ10IrOaHtFl1Hr5WIyH5rhYFBve273vpQblXpgpnXarhWVw8TKn9rkB8H3cDk",
+	"mkuYsEdEaBNZcQ0PV0wmUqnT7NU2ntL3CHdS0BNBfI5hI82ldZsiOxambCbyYfkNoY1VE9BmH+e51S59",
+	"caOFBdImUxz18MWHdgvhJbVjpon+C641n5JxR4MsNMT4LrKFJGqlJZDPelBAeT/bZQP2IX+2A8L4Mmc4",
+	"3whjA70xOzYHBBU7Hl8TfkgScOKphoUt9aNjZq0ommD8m3f6PzQMW/ut/71WEHVr3pyveVs+MxLt1pib",
+	"iwluwpvXvBgyHueUFS1i+CiMZQOYKsTexHD5TR0h+fI8ki5oWth+sBDE+JWSCGOrS4O+aQJm5bnzD2q7",
+	"4Sh1p2liDmje3Fh4TNVATeYkDwsvchyAuhbESHIm4WY+ulkEJ96lfiDpIgcW86XW/Qx6+5cx2DFot9Jw",
+	"4WNLSRMIycJtbOUyqKHLVVyuqKeKH0hrXX6Kwj6saGhvfYlPxCZlpi4299DVJcu8vkQ1+e30b63vUDhq",
+	"qiqFCAFBSVMxdy/jxoiRLCmsByirh+umulpaLtaFxuFJ8m7Y2v/tjqrh95ogXzWB/7MxsCHaFERZHmER",
+	"2KLuoFQ5EWaX90KSlyh2ubDd7RYi2a6BJxCzd2/f/Dd79/bgFeOWkXqmjSiuKnZqtUihkwiL23ul0STJ",
+	"xPFPp69fdDa2d1gsRghSCEEK4zvm9mSL9Q8O0uycfMhn5cBLwgJ1M00Ud+Av1zFuQ4VqJkgSA6LVGtTN",
+	"hIukyb74+yIlLY8so+uqq+zvXEI3VvBn/1U3UpOyDnKPvgM+mvgd4TIrFBoVdpDzNUbefJI1vKba9J+4",
+	"BHao4E6k5ZwFc+Rt7NKpyc0AzVE2SERU3uwmww5u5EUETMmB4jr2Xp3qRA0yIyQYc9Hc4zcw4glzrAop",
+	"y3B9Q+9fRBNgxx7+sL6MuvfXjF4fXjgYGE0rOrL1/vSw1Z5Z+hqgkwDu4Vj/9B3b2ljfZQasTYDgb3hU",
+	"tbHuUaXWbVbattm0I2+W6TBhLNViwjUC10hlMsg2O8oIl7BRoga0I3cce7U5A5EkQo7+zKMJBAT5YMFP",
+	"uTE3SjdszA+5GZMssHBNl53yBJEe7kDH3IwhZjjFI/ZCj5TcEPHaINLT1Fbbe5qlm/p0M9Kb9vjPxvyv",
+	"cjvz11eaur7xfWWEv1+mw6qS2c67nz9+vtHxQtiXFioLqSr6fILT1EA50/fkxg1+kgEEJAwx8RETniSo",
+	"moNw4aRaR/KyCCevCkw2er1eaYSEtDtbrVlivN2KeGozDRcTsGMVV6U/53VKO7nydxMuM56UhqWQiOpy",
+	"Wr588m5FKq5Jambi+y6cYC0umriiXKcWbFH1hSU6ee/nnZff7/5lqfnzM1vqd7UR8yXnFxiMlbp6JeNU",
+	"iQWy4+IEGvSlcPbaeebwJcRqmWyAVw2AWVVDaX61X5C42a7JoggghrjYSoafwschFwnE90Fv7Vamk2bU",
+	"9Prs7PiUge8ve3/yhmmIQFyjCrhxo8FiQMykheMJi6kZW5ua/bW1kqVe46lY8/eZCrmrxdJ5w1a2w9g2",
+	"TpKfxAVi5BBJjQWWxHpnBgjNDEUCLJMx6DI/bEFyaT+ZF86h0Q03zN/7mLTwYmD1nyY3QxWIhdtlDcY8",
+	"DtR6ECl8FLxjZASr3jFHakBcpoxXcOGz/2Lv3/QP196/7x9e767O1QxLmV289q7M7mK+UQzDtLIbYcco",
+	"XDnRiJuOwDU2X+d4xpnd2ryd6+fDsP9pChSLAC8HdlbY5O64dqkozHIqYYVUeZX824ZnZGn84CVIRPYk",
+	"OOsfayE2cXU56VNi6/L5q9BzlR4t0nMPZ+tAXkOiUor3yscjeF0+lbfL1fCDmLthpon9cf7oBuauHCf0",
+	"VRN39UWHoDKnJY8r41taN9u9XuPOp8bhd655kgELEsRSLrRxHgyriNbgeiCsJl1PLWGxmnBB3B3vnssD",
+	"JY3VXEhr9s9lhx25AA223XOMaYr7cN+FLl7wM0x9lM8+89EcbKtX8mXRVX+lZtWv2+7VLizP2+8tpWOP",
+	"/1o7u5vbGzgRAu14K024FThpt6RcyqO23WsY9FdaK923MJkFZVGj0j6igEYoPDOATyBk690ywrChgKSm",
+	"HbzD9MKrg4Ypo5uaYVXK7Ri1qtOuzgPoH+jeRf6HwOlWXxysbgOhYQwfLXc9uQ76qxf2MexNOXNNm8EK",
+	"i1dLFJSca1fTGnkNPLHjsg6rzpmx3GamvHLVFe3xR5rHDuUWzaWfZrFusADV6INPglnXoA2NbfmJ691e",
+	"t7d0UHyPyu0qntc0RH0nF3kAVHWAmq34p8pYvkNqcO9x4zpefeMJfc9uxtPimcxtRZzwOHIzKpROs6iN",
+	"yAyiSHLJlo+m3/z7VjUN3xs1EnIuW5azM3FOfZRDuoelmG4hBX4p/pn73+/EaZ7ASBgLGuJiL7EAc4dr",
+	"PpnenM/yNPQ5cFI57VNlc4hYPv6zMTc9HX8OMudO5I2fyXlwhxy3cT5d5WmkvY5wBHUUIYr96ZczorS0",
+	"si46UMNQgxm7iNbZyXW3XdCvDa8eK207iOtQfKapVSPN07Hfy3hPDL6yHiwhR6VJ8OFWNYGA6U/jwY+R",
+	"eCd+6r//Z3/9reibvjzZjg76O/2r9Ne/Hvy01+12F8UICdnERAwBNVDQDH5cXECvkHmYvQ9M3Ov1qPHr",
+	"22wiZGahxmDt9XpNfJUf1Xnj9i7l/8iAjcVo3AFptUqn82aEHRf7dTJXrqUuZMAwYV2MjDEZGEZRXgmP",
+	"iOHtnkvK7ogZfIySzIhrSKaM41XBkTLmZoydPlbGjjSc/uVNDaG09ND6veTPL082DvfWN37e+353Z3tr",
+	"c2O99+LlweGrHxptDzbywn3dpKNRFpT2KiVEKRKMBmKHylEZL4Hr+q7If7dseZWa0a6Kcn2KKkIzZxGq",
+	"bL73IfcVp94NYchHmadhmOCyrMyui0LGmZxdeUtE6Ixc+bVnwcc0EZGwFLtNj2X9IVMTYS3EbR/D7dQE",
+	"N0ZFotiG428DGlVasCKPjJslah4kE02enaCQFzoPHC3VSF95boopWXYb3tuZg0OZBIeORXxVwQ659QqP",
+	"eYB7Z5b7vR97NqmPhwsbChb2EYm0Zk/TPalxFyHHDTOWyxh1/Bd0PB3XiD7Ujwma0Cr8yGPPwth+Rs/T",
+	"/YJB88n26GQGKN2Z3cNr78juFRuOumIDF/rCE+aumVkX5WYG/wsFqbXaLZOZlNxF2DCXR1TV5PmVn8pu",
+	"NS4RF66Zxo/KNjeRXPO8cvmuZ2Zd3Y/5qrnu5m0bC9/dA3xsFZX0SOqkrEbqzrJPXCaVIalObipqS2Sx",
+	"xAep9bNqLoJLybsb28UvkZJDgR3H1pW/dw5KkvjCUxVxGUFS366Xr7iDaDV57XKxWhLceKzVIIHJoYoy",
+	"7FDDLu2HA7a3tb3L/JXsECwXiSksrYNoOOivz86O2YvjvkFkCbDPgp8r5pZbzaMr0F0BdthVerQWq2ht",
+	"bCfJmh5G+AYPLFE18eRQRWZBY0KAVxhmctO17vU6Fwn8ABpsiJ9GuFWHODCHBTVWk7Ow47+gMDQ5arao",
+	"ttFOvWDjGj/1MU24z9/K8WKIY1ORn/4cl6RuxqotcrDQpa8EKOrZCMdSl0iJ5r0TdrVhbn7UXGYJ145C",
+	"6SRwDUmZ4FC6MlgEku5EmhfEZQNrLiQiiAiaRu/9SR8RMLhBsWNuCy1hqqD7joO3Fnai+M9FSMPcHOzG",
+	"NY9tJ39voxrzDClJR8NQvvRpvR0cDW6FkzpIYj90jCeC330AKzxZwxj6TjVGGdw3Y/veSUx3xhnB6R5A",
+	"BsHIPIEoZKAqLUa0SadE1HKDtupWbnOj0cqRG69JnMxYaduur0mTTQhMVsWm2KMWO1Ies7A7bM8LPFgm",
+	"xOVg28WvC7qQp6JrSnsfKrIgebLmRGnNy2JH5027V+SB3zq7Qcsnr8nSnLi96BluRefukv0PbKDiKe19",
+	"FdVe4NLnW8VlmsqFW3HpMx6WMVV32C/7BynHvsynwD59q1sew2rDlo/dPJ7vLdwkniZqpvvuy979QL02",
+	"JQ6vGP0n4eIk3Mzj4x6BdDspqLE5c88GkChJxQLI7AIzfBKS/Yd8IpLpUvEoNmQ/vDo8ePliOTv2dfFc",
+	"72kfsjQQGqHa7ubeDvvp9N1bdgR6hIDcRuMCdSjtdl6u1op3tXPr7Q2CyMKpGTgqpoEwRCZxLzeinOsz",
+	"5TPMXbEY4JrxEMFOZrNN9D27lFmSXHbP5Q/k5XPu4Ta7gqlHKxNqJae6EWafbnI0EuU1UL8NE9Yw8jD/",
+	"Kb/g8gqm+4ye7ltiHNy4Ap8JPMchUoso8lu8R48qmjzAz770obN+9zCI3u/uB6zLTn1SgfPLW0UjhX/d",
+	"WNU87iXPOLnbaYJCEQ2XN/B/qt71tn9y7ZplnvUkvqCcCGxN7lWPBZ8oGd/VqR74wlrIz+lE2PH9Z+p2",
+	"7nK7c3B7ZVHNMB4GLP5g7s2AulbES6PYf6RYbXaqkowqKzxWIHtTW/yVy5nDV+9P7sccNs3DTIDrPIbl",
+	"fhxFiBQNgaTVlt+Atx5HW2+3j3d2mwEzOSEbfG9iRI49n9ZDjKtVDDcImQX2+ujFQe7ncWG3Rowkt5mu",
+	"h6vejA1EF44p+fW//9ZYjKKJLsmpu1gYFPv4zsyerqnHxw6YJd7ERc364VuAXd0YZ1rY6Sl5oBx0yusp",
+	"OK/ID+H95uriu5lsi6PmagqlXGuqkpbnU/uKHBoi6zczHas67j+KsB/pfIvu3GKtfd+QovM4ajic7vuf",
+	"bmxDa3/65Wymsd5hjBjbe3w82jImK7ZaTprtlIV0GWpy7rT1+NPcoYW3tCceKkfCEClfRHC0KGXwOOEW",
+	"Z5i90NFYWIhQTNkZuB1tnd8P6YYdCoZhA24gEdLlVJsydZSvw3JWmSf32IhbuOFowV/EY9BgCFRQmRir",
+	"2FxijFzZSeI2q44YqnJl3hYlIgKvQXxPj/pnM1yWSkG64ENisfxNZg2vLXarrXL7sZc/uraXImhCGM5t",
+	"u4XP5Klo7bc2u73upnMJjEmqcVV10OzihxE0btFcPSe/V6L0F0GRdRFP8gTnWaRc8u6XIj5wcB2g9xUH",
+	"92mTjACU8ZI0oSyGHc3KZS7Ql6uIHniSmNrz871hvtAucV1errIbkSRsgLvFv7u0FPJubvU22Q9KD0Qc",
+	"g3Tzo4Jjox/7BAWXW2la1dJxcxIyi0vW5hVtum0vvXVOVbo73FkveXWHW2ZK5NzhntkKRLcfUNc680hi",
+	"tNHrhZXtKWaC2G4Frv3dR00VhXCWp7dWwntJfdQCfCvZ97lMhsx2VEn1gpcdL3/zGuCvX1teHfO2Xa3x",
+	"s+SBc6snUr+2eusLxs7TP/91vzGsc/4NA3jk2Gq0SYF4KXz/teF7zM5uPkVni3VfiErEpVSWJcIURRv+",
+	"VNNHAVB8vvHY2HuK8TjhFhhVsGPw0Tmial2k8qQdUmfLeji3kumjLpPthSrms41U35OpHqI5a/+ZxKGE",
+	"QsnmlEDdbx9Q53omOiTTzdQcQdTFR2iwWvgVWbIPt+1Wqho3lCF53fjUdROiCKv4NS8M8F016R9NLSKh",
+	"iXefWdXx/5bhK0Khs3KRJ193gEreuFoA8JH7sqQRuGKD9KsbHh/b5uspGRfNJiRLEy6o2F0DvjjDB+SJ",
+	"ezmk018l7CgXg7g37misn/qFcQA96KWKp48GAZrKvtxWN3hWZ3A7g0LWP1MT5uOQIAUhn40c+8YMsySZ",
+	"dkkiuZAmL3Pm15ZbBH8okPIk2veIJ7glLMpWB2r5MwKUZzT2hGhswiUfAVOUBfeMyp5R2R8KlR3XSo5V",
+	"kVQzOrttF4zM2u8ivnVALQHbQNL3J/7whDy625ShyGDKUpVmifMNCGvYZVGS8JLlWVfdc1kCDvssED4b",
+	"VMDbVRGWtlIp2dcg5IkGHk/zcoXOsSOMK8p+nvV6GzuMbBN7qTIZu/TKE7hWno2zHNsMwyFElolSd+op",
+	"CHhXLIw7PIJZNRkYq6SvTqjcERSdRKmrLHXXuELTA3xrzmAKKqc0FKMMNerZ2Zs/DBl1QgM8DxUu8z14",
+	"Z3poTCXFgEoWp5y8V56VFKX4xjh4rprKFi8tGDvDyT8dI9VQgTaMRxmkBVFmxOk66RaS0mjc9+5skJX8",
+	"8AG7+kwu3QPOhLTLUmKJX1j/RrDGydITAhq3Gr70iIT1hkMwRMXsS8vQBr8pd+AZzT2jua8GzTkTXDLq",
+	"CwBcZsdrlGBE0QKNdNuLEmAoSX85V3fFZyfJogjdKn1C2DZIhBnXYErQpOcy99nNCeajx3C5JPCxyStG",
+	"vXrmpVCWK/n0dyKkeo/97gVMVKUQfQnjdNlpQ174H9JT9kTqySGY8uiFCEeiv2sc1bfGTYX+O+VEhTOK",
+	"SgnfksU+U4pNuJzWznRg3FqYpNZ0Q3R/5US9Z6P+lRn1ihGnZvhAlkabW53rsomvCoHnNvo+JKpm+FVm",
+	"51v+E8/U2CL/oBpz3pSIX5j2+1I17pljXrA1A8jLRTyAshGmQtSkoOluCjW8G2VTI2ZmKJkOc6UVck7L",
+	"zlQ2UDKZ/skNTDO+cVHjxldryqQVCTFgpcL9Of/FVi7hY3q5Ogfv4GQ+Ax4POkoVL2495FlGswS4UaFZ",
+	"SqUkylRLYFme+ZVH41e+WbOcFwliz3vrP/jeup9rg2aL6K3fg8yxf9Iie0wXON9JcLfSHrmceDaTezhv",
+	"y9yfpC45wTD/ZEZpfOxE+cz5lZOzk1Vn2l0KGdOQGWAxWBfDuH8uX/Fo3JiKRlWyeUNtLZf/Hldy09jK",
+	"pfvnQsRk334ZgyOzyw8WhvloZYjb3ldVowrwqzkZcnSep6B7z+WE66siVdUfEFpHN6EkVcxWLsO/F4Mp",
+	"NbA/pDHOzYH7dS3kOM5vOOMjLiRbKR1z6i5KgF+5Izvd+XHW8uhqtX0uCT1MDR1p2uRIo5QlOrwcp4oC",
+	"kbhlpQFtdtQUiZvPqIHUUlMe8BdmSxrTaRvUY4AqXsxmAnjewo2XqpQL/UyaPEfuzGFH2sGQtJ3qoVys",
+	"mazybxSWuV6W4NkzTfIHo0kCcJmHhu4LxPLz1JYnGflDuEu12hN/Ukj+kNlUI0RAlfxXqvDmi8vTeeb5",
+	"MehHgFeIyPEa7w0Ydlk/NBzvvnSlyS4GlIlz6ZvlsEDp/PL8YIb+oWErl02nlhOu6bC7nI9eHG6uIaEk",
+	"eBlyAvuHPumZSsRoYZQ8l4ytXP7y+tXJK1acgL5f681qu3wK/CjjdH4nGIKbeiKkMFZEjpDhGl/q2SN8",
+	"vGNe6DT0JlbKnzjfPyR+iXil+knpaaZH4aD02QSrg1wwnlOsnizFqvEMhQbldFwcnxCKN9DanAODviHQ",
+	"UlpAXuTLBcPNNxx+HPik0nGpz1EZz8jkyzJHIfO+Me0p10W+5kU57Sk/6+qIAsmpb/fIgKod3hkyohbm",
+	"N4cKxIghEJbQ+UElKDIn4eegONTnmTMI+Tb1mkNfOuknP7ynIeG4JnXNGT/fmEH8a1HccchFkmkom4i8",
+	"DlDtZItny/hsGZ8t45e1jE5/1s2Y11VLDWRly55noczbt2sB1+DPyMtfFfvaKINwim/xU/+wey5PszRV",
+	"2hpXNCVSMhQpK1eQvRacvTrjIzKm/WHnrZLQOeI2Gu+Tp8DtTl2xlHp54gle5mMH6FzuGGJ2WXnIJbN8",
+	"1PbbF8M2KYbCsqNwBF6Dsf4R7HxLfcc0jHwg/CG4DZTB6qdmZiw98PH+mRn9IY4cDdzToIzPvPu9k5V3",
+	"Yet0XE7zphfFddkCx2s+px7cbIrCyLuSF1JkRsgIXEF87ZYxT7rspHkdVVbOV9jpfyNA8DTZG7kALU7f",
+	"CAew6GLT84yMnpHRV4OMAmAhT8M9cRGVTYvG8ypUmqaitj5wZH51XAMTLq2ITBkVXZbnh6rUdujVNEeX",
+	"Ic6zczZNgfwY73yxXKp+a5pq5nbYD+63HAwRix/Oh/LOBXUN+kYLC+6sWWw5/WDKTzBgmVW+ui7Ff1AN",
+	"XojXPO9PF4ezXtkAxhwBIr2vXns37/2+bxiV1/2dnbeuYHre2mfnLWrAeYvdXuKbKeM3lOYNNXfb55Kx",
+	"m7FIYM5TqADt7bxivVWMV613/Okwzyp3qvL0awR13yR71FyxGlXEomX16c//ojEt98KtvtD0Inbq6wBx",
+	"T+7oQZUc+2vLqM7X/J0GffhMbH0zOPYZoD4D1K8HoDrj8hB4ettuYUsSO/7n0jibUMJZlQ7z08BjV+w9",
+	"hM/QB1cmu9vEhb32b/uMZq52LHpj0KbrijDM9X5K7S/1rNv6KmyLVgOoRA2Q4D9JcYrSmIUD5H2xMdAC",
+	"ZETHMasbaawGPgneHmzygqgxN1UsGkN05XpbEtlTirT2UhrYAjM/Kv8UkmEnSKkRI5mlrtA2Udo53aD0",
+	"iMtwEPm5dLy3qR7/6CmJgIWogDWngP9y5h/1CpJpKXt+q7eHW61hIiIb0umqJ4aWaiDhfssAbuKosS7N",
+	"rSg2WYp9dKHqxjI+cHfM8Qnnh+E++4QLn3D9YIwv7BPO56RpqddP3yiO4/2m3cIhI9x112dXFiKCiuUG",
+	"+NUXSBTvPQneeuVUQp6zkk+6VYxLV7zwWy9v45Qeqbln6PmHivR20lq3q15MSwY8124zmDO35mvuJKGF",
+	"wDO3wgVDulI5ZKjtTGzb4852fsbPan52Rx5X1bSqZkBqaPgR3NuQ/gHcl/c0SI78/mL26N+x3Nzzpv9Z",
+	"8z6ovlhwTDXHlc6yAM0aea6Tyse1mNlT4kq62GTRmHFTnPsWC0N5s6ia6Uhnfwhb+eS1Jv/JJ2jdb9kp",
+	"8aDtyxNZizs4DZ4TU5+N4rNRfDaKn8soejJ87rmmd9qf+OP9OoKGdAHn2JfCCuIP3W7o2N3Yd0W1KH5B",
+	"FLaJgRwq7Y6P7vq3UkGrN8od5tHE6VUe+YSW8bNydJVOPhFRV2vDoqzG8iQ3p3F8DdxazTo9Hd1VEkKq",
+	"3ZaIyHpfxpNYtkNFwU5jLuOE4ltFqMCD2p60TT0uPhz46TQCWzm12WC1pEu8TJi8Hp7SwF7JkZDgdYo/",
+	"h7YTjpVaoFUOQn07KjD0+uzs+JTFYGzIKH1/8oaYjTQz486AG4gZN1MZjbWSKjP+qF6pbH6Iqamom9P/",
+	"/y85T93UDjF+BALksyqOmTOXn0R1zDv5uUH2fqmd5jyf8n96FZK3EQVO4UIxLtwQYi9jVovRqPBMfvWr",
+	"OScv64dqz67oX8K50R88/kCU0xTP9zIcHXy9ThEw/kxglmoYio/5ab1r1+u0Fvzz6095N8A38IFIhJ22",
+	"mQXsgtXTtvM+OkepcwjnGqRbhAR6Zyla9jl7tHAWc7vhAGb3kjxZ9QqkP0iJdN6KH+F3NxL0Pvt5/P/+",
+	"JcerpZcvqeixoFGehTXtGZzW9jkThYOo9MIm5Db7ltPqOYRpSNYVctSmOgT0j4tcGEI0jRIodbvcv1Cs",
+	"ffYdeVzFTE98D/IcR1cUozxnTTEZDW9AS1I1P6bNojHXI3yHhmEmY/+yBOIR6CKQwdTnDoFmeeYWma3Z",
+	"pgTdZbJB/rVpF2fCs2vQhclxTXJ6IhbGBcrV2oOWqNyefNHdfrj9nwAAAP//UgX7b4DKAAA=",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file
