@@ -1,0 +1,74 @@
+post:
+  summary: Refresh expired JWT access token
+  description: |
+    Refreshes an expired JWT access token using an active rotating refresh token.
+    Implements Refresh Token Rotation (RTR) with family reuse detection:
+    Each refresh token belongs to a cryptographically tracked token family (`family_id`).
+    When a refresh token is presented, a new access JWT and new rotating refresh token are minted,
+    marking the previous refresh token as replaced (`replaced_by`).
+    If an already replaced/rotated refresh token is presented again (indicating token leak or replay attack),
+    the system immediately revokes all tokens within that `family_id`.
+  operationId: refreshToken
+  tags:
+    - Authentication & Identity
+  security: []
+  parameters:
+    - $ref: "../components/headers.yaml#/IdempotencyKeyHeader"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "./schemas.yaml#/RefreshTokenRequest"
+  responses:
+    "200":
+      description: Session refreshed successfully. New token pair returned.
+      headers:
+        Cache-Control:
+          $ref: "../components/headers.yaml#/CacheControlNoStoreResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas.yaml#/RefreshTokenResponse"
+    "400":
+      description: Malformed request payload.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "401":
+      description: Invalid, expired, or reused refresh token.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Too many refresh requests. Request rate-limited.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"

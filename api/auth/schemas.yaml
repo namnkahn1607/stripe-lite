@@ -57,3 +57,41 @@ LogoutRequest:
       type: string
       description: The refresh token to explicitly revoke. If omitted, the session associated with the bearer JWT is invalidated.
       example: "rft_01HXZ5KBR2D912K9876543210ABCDEF"
+
+RefreshTokenRequest:
+  type: object
+  description: Request body to rotate an expired access JWT using an active refresh token.
+  required:
+    - refresh_token
+  properties:
+    refresh_token:
+      type: string
+      description: The active opaque rotating refresh token.
+      example: "rft_01HXZ5KBR2D912K9876543210ABCDEF"
+
+RefreshTokenResponse:
+  type: object
+  description: Newly rotated session credentials.
+  required:
+    - token_type
+    - access_token
+    - refresh_token
+    - expires_in
+  properties:
+    token_type:
+      type: string
+      enum:
+        - Bearer
+      example: "Bearer"
+    access_token:
+      type: string
+      description: Fresh short-lived access JWT.
+      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    refresh_token:
+      type: string
+      description: Replacement rotating refresh token belonging to the same token family.
+      example: "rft_01HXZ5KBR2D912K1234567890FEDCBA"
+    expires_in:
+      type: integer
+      description: Lifetime of the new access token in seconds.
+      example: 900
