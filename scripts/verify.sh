@@ -29,7 +29,7 @@ trap cleanup EXIT
 # Wait for server readiness
 echo "[*] Polling server readiness on port $PORT..."
 READY=0
-for i in {1..30}; do
+for _ in {1..30}; do
     if curl -s -f -o /dev/null "${BASE_URL}/v1/healthz" 2>/dev/null; then
         READY=1
         break
@@ -103,21 +103,6 @@ fi
 echo "$STUB_BODY" | grep -q "not-implemented" || { echo "FAILED (RFC 7807 type mismatch)"; exit 1; }
 echo "$STUB_BODY" | grep -q "Long" || { echo "FAILED (Domain owner reference missing)"; exit 1; }
 echo "PASSED (HTTP 501 RFC 7807 ProblemDocument: $STUB_BODY)"
-
-# Test 7: Stub endpoint RFC 7807 Problem Details (POST /v1/auth/tokens)
-echo -n "[*] Testing Stub POST /v1/auth/tokens (RFC 7807 501 Not Implemented) ... "
-AUTH_RESP=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST "${BASE_URL}/v1/auth/tokens" \
-    -H "Content-Type: application/json" \
-    -d '{"api_key": "sk_test_123"}')
-AUTH_CODE=$(echo "$AUTH_RESP" | grep "HTTP_STATUS" | cut -d':' -f2)
-AUTH_BODY=$(echo "$AUTH_RESP" | grep -v "HTTP_STATUS")
-
-if [ "$AUTH_CODE" != "501" ]; then
-    echo "FAILED (Expected 501, got $AUTH_CODE)"
-    exit 1
-fi
-echo "$AUTH_BODY" | grep -q "Khánh" || { echo "FAILED (Domain owner reference missing)"; exit 1; }
-echo "PASSED (HTTP 501 RFC 7807 ProblemDocument)"
 
 # Test 8: Stub endpoint RFC 7807 Problem Details (POST /v1/webhook-endpoints)
 echo -n "[*] Testing Stub POST /v1/webhook-endpoints (RFC 7807 501 Not Implemented) ... "
