@@ -1,0 +1,71 @@
+ApiKey:
+  type: object
+  description: Metadata representing a merchant secret API key.
+  required:
+    - id
+    - name
+    - livemode
+    - prefix
+    - last4
+    - scopes
+    - created_at
+  properties:
+    id:
+      type: string
+      pattern: '^key_[0-9A-Za-z]{26,36}$'
+      description: Unique identifier for the API key resource (corresponds to <key_id> in sk_live_<key_id>_<secret>).
+      example: "key_01HXZ5JABC1234567890123456"
+    name:
+      type: string
+      maxLength: 255
+      description: Human-readable display label for the key.
+      example: "Production Core Backend"
+    livemode:
+      type: boolean
+      description: True for live production keys (sk_live_*); false for sandbox test keys (sk_test_*).
+      example: true
+    prefix:
+      type: string
+      enum:
+        - sk_live_
+        - sk_test_
+      description: Key environment prefix.
+      example: "sk_live_"
+    last4:
+      type: string
+      minLength: 4
+      maxLength: 4
+      description: Last 4 characters of the raw key secret for UI display and identification.
+      example: "a1b2"
+    scopes:
+      type: array
+      items:
+        type: string
+      description: Scopes or permissions granted to this API key.
+      example:
+        - "customers:read"
+        - "customers:write"
+        - "payments:write"
+    created_at:
+      type: string
+      format: date-time
+      description: Timestamp when the API key was generated.
+      example: "2026-10-23T04:40:00Z"
+    last_used_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: Timestamp when the API key was last used for authentication. Null if never used.
+      example: "2026-10-23T06:12:00Z"
+    expires_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: Timestamp after which the key automatically becomes invalid. Null if never expires.
+      example: null
+    revoked_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: Timestamp when the API key was revoked. Null indicates the key is currently active.
+      example: null
