@@ -1,11 +1,11 @@
 ProblemDocument:
   type: object
   description: |
-    RFC 7807 Problem Details representation for HTTP APIs.
-    See: https://datatracker.ietf.org/doc/html/rfc7807
+    RFC 9457 Problem Details representation for HTTP APIs.
+    See: https://datatracker.ietf.org/doc/html/rfc9457
   externalDocs:
-    description: RFC 7807 Specification
-    url: https://datatracker.ietf.org/doc/html/rfc7807
+    description: RFC 9457 Specification
+    url: https://datatracker.ietf.org/doc/html/rfc9457
   required:
     - type
     - title
@@ -28,17 +28,49 @@ ProblemDocument:
     detail:
       type: string
       description: A human-readable explanation specific to this occurrence of the problem.
-      example: "The amount parameter must be a positive integer in smallest currency units."
+      example: "The request payload failed schema validation."
     instance:
       type: string
       format: uri-reference
       description: A URI reference that identifies the specific occurrence of the problem.
       example: "/requests/req_9b1deb4d3b7d"
+    code:
+      type: string
+      description: Machine-readable fine-grained domain error code.
+      example: "parameter_missing"
+    request_id:
+      type: string
+      description: Distributed correlation ID for observability.
+      example: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+    errors:
+      type: array
+      description: Granular field-level validation or domain errors.
+      items:
+        $ref: "#/ErrorItem"
     invalid_params:
       type: array
-      description: Granular field-level validation errors.
+      description: Backward-compatible field errors alias.
       items:
         $ref: "#/InvalidParam"
+
+ErrorItem:
+  type: object
+  required:
+    - code
+    - message
+  properties:
+    field:
+      type: string
+      description: The path or name of the invalid field or parameter.
+      example: "email"
+    code:
+      type: string
+      description: Machine-readable error code for this field.
+      example: "invalid_format"
+    message:
+      type: string
+      description: Human-readable error message for this field.
+      example: "Must be a valid email address."
 
 InvalidParam:
   type: object
