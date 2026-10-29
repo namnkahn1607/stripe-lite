@@ -1,0 +1,50 @@
+LoginRequest:
+  type: object
+  description: Merchant dashboard credentials for session initialization.
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 255
+      description: Registered merchant email address.
+      example: "merchant@example.com"
+    password:
+      type: string
+      format: password
+      minLength: 8
+      maxLength: 128
+      description: Merchant dashboard account password.
+      example: "SecretP@ssw0rd!"
+
+LoginResponse:
+  type: object
+  description: Scoped session credentials containing access JWT and rotating refresh token.
+  required:
+    - token_type
+    - access_token
+    - refresh_token
+    - expires_in
+  properties:
+    token_type:
+      type: string
+      description: The authorization header scheme type.
+      enum:
+        - Bearer
+      example: "Bearer"
+    access_token:
+      type: string
+      description: Short-lived cryptographically signed JWT for authenticating dashboard requests.
+      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    refresh_token:
+      type: string
+      description: |
+        Opaque high-entropy rotating refresh token. Presenting this token revokes it and issues a replacement.
+        Stored exclusively as a SHA-256 hash in PostgreSQL.
+      example: "rft_01HXZ5KBR2D912K9876543210ABCDEF"
+    expires_in:
+      type: integer
+      description: Lifetime of the access token in seconds (e.g., 900 for 15 minutes).
+      example: 900
