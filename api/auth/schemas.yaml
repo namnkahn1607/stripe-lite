@@ -48,3 +48,12 @@ LoginResponse:
       type: integer
       description: Lifetime of the access token in seconds (e.g., 900 for 15 minutes).
       example: 900
+
+LogoutRequest:
+  type: object
+  description: Optional payload specifying the specific refresh token to revoke.
+  properties:
+    refresh_token:
+      type: string
+      description: The refresh token to explicitly revoke. If omitted, the session associated with the bearer JWT is invalidated.
+      example: "rft_01HXZ5KBR2D912K9876543210ABCDEF"
