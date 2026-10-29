@@ -1,0 +1,174 @@
+get:
+  summary: Retrieve a customer profile
+  description: |
+    Retrieves full customer details by unique customer ID.
+    Supports HTTP conditional validation via ETag and If-None-Match:
+    If the resource representation matches the provided `If-None-Match` tag, returns 304 Not Modified.
+  operationId: getCustomer
+  tags:
+    - Customer Management
+  security:
+    - apiKey: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Unique identifier of the customer (e.g. cus_<ULID>).
+      schema:
+        type: string
+        example: "cus_01HXZ5JABC1234567890123456"
+    - $ref: "../components/headers.yaml#/IfNoneMatchHeader"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  responses:
+    "200":
+      description: Customer profile found and returned.
+      headers:
+        ETag:
+          $ref: "../components/headers.yaml#/ETagResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas.yaml#/Customer"
+    "304":
+      description: Customer unchanged since last retrieval. Representation matches If-None-Match.
+      headers:
+        ETag:
+          $ref: "../components/headers.yaml#/ETagResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+    "401":
+      description: Missing or invalid API key.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "404":
+      description: Customer not found under this merchant tenant or livemode.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+
+patch:
+  summary: Update a customer profile
+  description: |
+    Updates customer attributes using RFC 7396 JSON Merge Patch semantics.
+    Supports `application/merge-patch+json` Content-Type:
+    - Omitted fields remain unchanged.
+    - Fields provided with explicit value overwrite existing values.
+    - Fields set to `null` are cleared/deleted.
+    - Metadata behaves with key-level merge semantics: providing `{ "key": "value" }` sets or updates that key,
+      while providing `{ "key": null }` deletes that key.
+  operationId: updateCustomer
+  tags:
+    - Customer Management
+  security:
+    - apiKey: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Unique identifier of the customer to modify.
+      schema:
+        type: string
+        example: "cus_01HXZ5JABC1234567890123456"
+    - $ref: "../components/headers.yaml#/IdempotencyKeyHeader"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  requestBody:
+    required: true
+    content:
+      application/merge-patch+json:
+        schema:
+          $ref: "./schemas.yaml#/UpdateCustomerRequest"
+      application/json:
+        schema:
+          $ref: "./schemas.yaml#/UpdateCustomerRequest"
+  responses:
+    "200":
+      description: Customer profile updated successfully.
+      headers:
+        ETag:
+          $ref: "../components/headers.yaml#/ETagResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas.yaml#/Customer"
+    "400":
+      description: Malformed patch document or invalid property values.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "401":
+      description: Missing or invalid API key.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "404":
+      description: Customer not found.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"

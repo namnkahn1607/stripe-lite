@@ -1,0 +1,136 @@
+post:
+  summary: Create a new customer profile
+  description: |
+    Provisions a new customer entity scoped to the authenticated merchant tenant and caller's livemode.
+  operationId: createCustomer
+  tags:
+    - Customer Management
+  security:
+    - apiKey: []
+  parameters:
+    - $ref: "../components/headers.yaml#/IdempotencyKeyHeader"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "./schemas.yaml#/CreateCustomerRequest"
+  responses:
+    "201":
+      description: Customer profile created successfully.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas.yaml#/Customer"
+    "400":
+      description: Validation failure or invalid metadata constraints.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "401":
+      description: Missing or invalid API key.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+
+get:
+  summary: List customer profiles
+  description: |
+    Returns a cursor-paginated list of customers belonging to the calling merchant and livemode.
+    Pagination Mechanics:
+    - Uses `starting_after` and `ending_before` cursors with monotonic sortable IDs (`cus_<ULID>`).
+    - Behavior on deleted cursor: Because filtering relies on direct ID value comparison
+      (`WHERE id > :starting_after`), pagination guarantees deterministic boundaries even if
+      the record associated with the cursor ID has been soft-deleted or purged.
+  operationId: listCustomers
+  tags:
+    - Customer Management
+  security:
+    - apiKey: []
+  parameters:
+    - $ref: "../components/pagination.yaml#/StartingAfterQueryParam"
+    - $ref: "../components/pagination.yaml#/EndingBeforeQueryParam"
+    - $ref: "../components/pagination.yaml#/LimitQueryParam"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  responses:
+    "200":
+      description: Paginated customer list returned.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas.yaml#/CustomerListResponse"
+    "400":
+      description: Malformed pagination cursor or parameters.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "401":
+      description: Missing or invalid API key.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"

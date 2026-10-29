@@ -1,0 +1,139 @@
+CustomerMetadata:
+  type: object
+  description: |
+    Key-value metadata pairs for storing arbitrary custom domain data.
+    Constraints:
+    - Maximum 50 keys per customer.
+    - Key length: maximum 40 characters.
+    - Value length: maximum 500 characters.
+  maxProperties: 50
+  additionalProperties:
+    type: string
+    maxLength: 500
+  example:
+    order_id: "67352"
+    tier: "platinum"
+
+Customer:
+  type: object
+  description: Customer entity representing an end-user profile under a merchant tenant.
+  required:
+    - id
+    - object
+    - livemode
+    - metadata
+    - created_at
+    - updated_at
+  properties:
+    id:
+      type: string
+      pattern: '^cus_[0-9A-Za-z]{26,36}$'
+      description: Monotonically time-sortable prefixed identifier (cus_ + ULID/UUIDv7).
+      example: "cus_01HXZ5JABC1234567890123456"
+    object:
+      type: string
+      enum:
+        - customer
+      example: "customer"
+    livemode:
+      type: boolean
+      description: True if created with an sk_live_* key; false if created with an sk_test_* key.
+      example: true
+    email:
+      type: string
+      format: email
+      nullable: true
+      maxLength: 255
+      description: Customer's primary contact email address.
+      example: "jane.doe@example.com"
+    name:
+      type: string
+      nullable: true
+      maxLength: 255
+      description: Customer's full name or business title.
+      example: "Jane Doe"
+    metadata:
+      $ref: "#/CustomerMetadata"
+    created_at:
+      type: string
+      format: date-time
+      description: Timestamp when the customer was created.
+      example: "2026-10-23T04:40:00Z"
+    updated_at:
+      type: string
+      format: date-time
+      description: Timestamp when the customer was last modified.
+      example: "2026-10-23T04:40:00Z"
+
+CreateCustomerRequest:
+  type: object
+  description: Payload for provisioning a new customer entity.
+  properties:
+    email:
+      type: string
+      format: email
+      maxLength: 255
+      description: Customer contact email.
+      example: "jane.doe@example.com"
+    name:
+      type: string
+      maxLength: 255
+      description: Customer full name.
+      example: "Jane Doe"
+    metadata:
+      $ref: "#/CustomerMetadata"
+
+UpdateCustomerRequest:
+  type: object
+  description: |
+    RFC 7396 JSON Merge Patch payload for updating customer attributes.
+    Properties omitted remain unchanged.
+    To delete or clear a string field, pass `null`.
+    For metadata, key-level merge applies: passing a key updates its value; passing `key: null` deletes that key.
+  properties:
+    email:
+      type: string
+      format: email
+      nullable: true
+      maxLength: 255
+      example: "jane.updated@example.com"
+    name:
+      type: string
+      nullable: true
+      maxLength: 255
+      example: "Jane Smith"
+    metadata:
+      type: object
+      description: |
+        Key-level metadata updates. Set key value to null to delete.
+        Constraints: maximum 50 keys, key length <= 40 characters, value length <= 500 characters.
+      maxProperties: 50
+      additionalProperties:
+        type: string
+        nullable: true
+        maxLength: 500
+      example:
+        tier: "diamond"
+        old_key: null
+
+CustomerListResponse:
+  type: object
+  description: Cursor-paginated collection envelope of customer resources.
+  required:
+    - object
+    - data
+    - has_more
+  properties:
+    object:
+      type: string
+      enum:
+        - list
+      example: "list"
+    data:
+      type: array
+      items:
+        $ref: "#/Customer"
+    has_more:
+      type: boolean
+      description: True if further records exist beyond the current page.
+      example: false
