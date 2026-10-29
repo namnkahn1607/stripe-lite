@@ -79,3 +79,71 @@ post:
         application/problem+json:
           schema:
             $ref: "../components/problem.yaml#/ProblemDocument"
+
+get:
+  summary: List merchant API keys
+  description: |
+    Returns active and historical API keys belonging to the authenticated merchant.
+    Access Control: Requires a dashboard JWT session (`bearerJwt`).
+    Calls authenticated using an API key (`sk_*`) will be rejected with 403 Forbidden.
+  operationId: listApiKeys
+  tags:
+    - API Keys
+  security:
+    - bearerJwt: []
+  parameters:
+    - $ref: "../components/pagination.yaml#/StartingAfterQueryParam"
+    - $ref: "../components/pagination.yaml#/EndingBeforeQueryParam"
+    - $ref: "../components/pagination.yaml#/LimitQueryParam"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  responses:
+    "200":
+      description: Collection of API keys returned.
+      headers:
+        Cache-Control:
+          $ref: "../components/headers.yaml#/CacheControlNoStoreResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas.yaml#/ApiKeyListResponse"
+    "401":
+      description: Missing or expired bearer JWT.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "403":
+      description: Forbidden. API keys cannot list API keys; dashboard JWT required.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"

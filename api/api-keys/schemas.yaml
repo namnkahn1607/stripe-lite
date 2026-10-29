@@ -115,3 +115,25 @@ CreateApiKeyResponse:
           description: |
             The full raw secret key string in format `sk_live_<key_id>_<secret>` or `sk_test_<key_id>_<secret>`.
             Revealed ONLY ONCE at creation time. Stripe-lite stores only the SHA-256 digest of this secret.
+
+ApiKeyListResponse:
+  type: object
+  description: Cursor-paginated collection of merchant API keys.
+  required:
+    - object
+    - data
+    - has_more
+  properties:
+    object:
+      type: string
+      enum:
+        - list
+      example: "list"
+    data:
+      type: array
+      items:
+        $ref: "#/ApiKey"
+    has_more:
+      type: boolean
+      description: True if additional keys exist beyond the returned page.
+      example: false
