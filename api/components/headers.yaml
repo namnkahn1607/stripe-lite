@@ -20,3 +20,49 @@ XRequestIdHeader:
     type: string
     format: uuid
     example: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+
+TraceparentHeader:
+  name: traceparent
+  in: header
+  required: false
+  description: |
+    W3C Trace Context traceparent header for distributed transaction tracing.
+  schema:
+    type: string
+    pattern: '^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$'
+    example: 00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01
+
+IfNoneMatchHeader:
+  name: If-None-Match
+  in: header
+  required: false
+  description: |
+    Entity tag (ETag) previously returned by the server. If matched, returns 304 Not Modified.
+  schema:
+    type: string
+    example: '"cus_01HXZ5JABC1234_v1"'
+
+XRequestIdResponseHeader:
+  description: Distributed correlation ID for observability.
+  schema:
+    type: string
+    format: uuid
+    example: 6ba7b810-9dad-11d1-80b4-00c04fd430c8
+
+ETagResponseHeader:
+  description: Entity tag representing current state of the resource for conditional caching.
+  schema:
+    type: string
+    example: '"cus_01HXZ5JABC1234_v1"'
+
+RetryAfterResponseHeader:
+  description: Number of seconds the client should back off before retrying the rate-limited request.
+  schema:
+    type: integer
+    example: 60
+
+CacheControlNoStoreResponseHeader:
+  description: Prevents sensitive credentials or session tokens from being cached by intermediate proxies or clients.
+  schema:
+    type: string
+    example: "no-store"
