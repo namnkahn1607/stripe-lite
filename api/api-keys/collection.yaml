@@ -1,0 +1,81 @@
+post:
+  summary: Provision a new secret API key
+  description: |
+    Provisions a new scoped secret API key (`sk_live_*` or `sk_test_*`) for machine-to-machine integrations.
+    The raw key string is revealed exactly once in this response and is never stored in plaintext.
+    Access Control: This endpoint strictly requires a dashboard JWT session (`bearerJwt`).
+    Calls authenticated using an API key (`sk_*`) will be rejected with 403 Forbidden.
+  operationId: createApiKey
+  tags:
+    - API Keys
+  security:
+    - bearerJwt: []
+  parameters:
+    - $ref: "../components/headers.yaml#/IdempotencyKeyHeader"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  requestBody:
+    required: true
+    content:
+      application/json:
+        schema:
+          $ref: "./schemas.yaml#/CreateApiKeyRequest"
+  responses:
+    "201":
+      description: API key created successfully. Contains the raw secret string.
+      headers:
+        Cache-Control:
+          $ref: "../components/headers.yaml#/CacheControlNoStoreResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/json:
+          schema:
+            $ref: "./schemas.yaml#/CreateApiKeyResponse"
+    "400":
+      description: Malformed request payload.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "401":
+      description: Missing or expired bearer JWT.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "403":
+      description: Forbidden. API keys cannot manage other API keys; dashboard JWT required.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"

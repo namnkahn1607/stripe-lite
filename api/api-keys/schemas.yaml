@@ -69,3 +69,49 @@ ApiKey:
       nullable: true
       description: Timestamp when the API key was revoked. Null indicates the key is currently active.
       example: null
+
+CreateApiKeyRequest:
+  type: object
+  description: Parameters required to provision a new API key.
+  required:
+    - name
+    - livemode
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 255
+      description: Display label identifying key usage.
+      example: "Production Core Backend"
+    livemode:
+      type: boolean
+      description: Whether this key operates in livemode (`sk_live_`) or testmode (`sk_test_`).
+      example: true
+    scopes:
+      type: array
+      items:
+        type: string
+      default: ["*"]
+      description: Specific permission scopes assigned to this key.
+      example:
+        - "customers:read"
+        - "customers:write"
+    expires_at:
+      type: string
+      format: date-time
+      nullable: true
+      description: Optional expiration date-time.
+      example: null
+
+CreateApiKeyResponse:
+  allOf:
+    - $ref: "#/ApiKey"
+    - type: object
+      required:
+        - key
+      properties:
+        key:
+          type: string
+          description: |
+            The full raw secret key string in format `sk_live_<key_id>_<secret>` or `sk_test_<key_id>_<secret>`.
+            Revealed ONLY ONCE at creation time. Stripe-lite stores only the SHA-256 digest of this secret.
