@@ -1,0 +1,80 @@
+delete:
+  summary: Revoke an API key
+  description: |
+    Immediately revokes an API key by populating its `revoked_at` timestamp.
+    Idempotency: Returns 204 No Content even if the key is already revoked.
+    Consistency & Cache Bounds:
+    - Revocation takes effect immediately in PostgreSQL.
+    - Redis cache tombstones or positive-lookup caches are bounded by their configured TTL.
+    Access Control: Requires a dashboard JWT session (`bearerJwt`).
+    Calls authenticated using an API key (`sk_*`) will be rejected with 403 Forbidden.
+  operationId: revokeApiKey
+  tags:
+    - API Keys
+  security:
+    - bearerJwt: []
+  parameters:
+    - name: id
+      in: path
+      required: true
+      description: Unique identifier of the API key to revoke.
+      schema:
+        type: string
+        example: "key_01HXZ5JABC1234567890123456"
+    - $ref: "../components/headers.yaml#/XRequestIdHeader"
+    - $ref: "../components/headers.yaml#/TraceparentHeader"
+  responses:
+    "204":
+      description: API key successfully revoked or already in a revoked state (idempotent).
+      headers:
+        Cache-Control:
+          $ref: "../components/headers.yaml#/CacheControlNoStoreResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+    "401":
+      description: Missing or invalid bearer JWT session.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "403":
+      description: Forbidden. API keys cannot revoke API keys; dashboard JWT required.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "404":
+      description: API key not found under this merchant account.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "429":
+      description: Rate limit exceeded.
+      headers:
+        Retry-After:
+          $ref: "../components/headers.yaml#/RetryAfterResponseHeader"
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
+    "500":
+      description: Internal server error.
+      headers:
+        X-Request-Id:
+          $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
+      content:
+        application/problem+json:
+          schema:
+            $ref: "../components/problem.yaml#/ProblemDocument"
