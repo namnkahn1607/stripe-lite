@@ -3,7 +3,7 @@ info:
   title: Stripe-lite API Gateway
   description: |
     Production-grade baseline API specification for the Stripe-lite payment gateway.
-    Adheres strictly to RFC 7807 Problem Details for all HTTP error representations.
+    Adheres strictly to RFC 9457 Problem Details for all HTTP error representations.
   version: 1.0.0
   contact:
     name: Core Platform Architecture Team
@@ -14,15 +14,19 @@ servers:
   - url: /v1
     description: Baseline v1 API gateway prefix
 
-security:
-  - BearerAuth: []
-  - ApiKeyAuth: []
+security: []
 
 tags:
   - name: System
     description: Observability, telemetry, and health probe endpoints.
   - name: Authentication & Identity
-    description: "Merchant identity, OAuth credentials, and scoped API tokens (Domain Owner: Khánh)."
+    description: "Merchant identity, dashboard sessions, and scoped token management (Domain Owner: Khánh)."
+  - name: Merchant Management
+    description: "Merchant accounts, profile settings, and registration."
+  - name: API Keys
+    description: "Secret API key provisioning, listing, and lifecycle management."
+  - name: Customer Management
+    description: "Customer accounts, profiles, and metadata records."
   - name: Payments & Core Engine
     description: "Core payment intents, charges, refunds, and ledger operations (Domain Owner: Long)."
   - name: Webhooks
@@ -57,8 +61,32 @@ paths:
               schema:
                 $ref: "./components/problem.yaml#/ProblemDocument"
 
-  /auth/tokens:
-    $ref: "./auth/tokens.yaml"
+  /auth/login:
+    $ref: "./auth/login.yaml"
+
+  /auth/refresh:
+    $ref: "./auth/refresh.yaml"
+
+  /auth/logout:
+    $ref: "./auth/logout.yaml"
+
+  /merchants:
+    $ref: "./merchants/collection.yaml"
+
+  /merchants/me:
+    $ref: "./merchants/me.yaml"
+
+  /api-keys:
+    $ref: "./api-keys/collection.yaml"
+
+  /api-keys/{id}:
+    $ref: "./api-keys/item.yaml"
+
+  /customers:
+    $ref: "./customers/collection.yaml"
+
+  /customers/{id}:
+    $ref: "./customers/item.yaml"
 
   /payment-intents:
     $ref: "./payments/payment_intents.yaml"
@@ -68,22 +96,26 @@ paths:
 
 components:
   securitySchemes:
-    BearerAuth:
+    bearerJwt:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Scoped JWT bearer token issued by the identity service.
-    ApiKeyAuth:
-      type: apiKey
-      in: header
-      name: X-API-Key
-      description: Merchant secret API key for direct server-to-server integration.
+      description: Scoped JWT bearer token issued by the identity service for dashboard sessions.
+    apiKey:
+      type: http
+      scheme: bearer
+      bearerFormat: sk_*
+      description: Merchant secret API key (sk_live_* or sk_test_*) for direct server-to-server integration.
 
   parameters:
     IdempotencyKeyHeader:
       $ref: "./components/headers.yaml#/IdempotencyKeyHeader"
     XRequestIdHeader:
       $ref: "./components/headers.yaml#/XRequestIdHeader"
+    TraceparentHeader:
+      $ref: "./components/headers.yaml#/TraceparentHeader"
+    IfNoneMatchHeader:
+      $ref: "./components/headers.yaml#/IfNoneMatchHeader"
     StartingAfter:
       $ref: "./components/pagination.yaml#/StartingAfterQueryParam"
     EndingBefore:
@@ -115,5 +147,7 @@ components:
 
     ProblemDocument:
       $ref: "./components/problem.yaml#/ProblemDocument"
+    ErrorItem:
+      $ref: "./components/problem.yaml#/ErrorItem"
     InvalidParam:
       $ref: "./components/problem.yaml#/InvalidParam"
