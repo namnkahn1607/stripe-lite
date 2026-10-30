@@ -1,23 +1,25 @@
 post:
   summary: Invalidate active refresh token session
   description: |
-    Revokes the active refresh token associated with the session.
-    Idempotency: Returns 204 No Content even if the token has already been revoked.
+    Revokes the specified refresh token and terminates the associated session chain.
+    Authentication: Possession of the `refresh_token` itself serves as the credential (`security: []`).
+    This avoids rejecting logout requests with 401 when the access JWT has expired.
+    Idempotency: Always returns 204 No Content, even if the token has already been revoked, does not exist,
+    or belongs to another entity, preventing token enumeration and timing leaks.
     Consistency & Cache Bounds:
     - Revocation is immediately persisted to PostgreSQL.
     - Redis cache tombstones are bounded by configured TTL.
-    - Logout revokes the refresh token only; the short-lived access JWT remains valid until its expiration timestamp (`exp`).
+    - Logout revokes the refresh token chain; the short-lived access JWT remains valid until its expiration timestamp (`exp`).
   operationId: logout
   tags:
     - Authentication & Identity
-  security:
-    - bearerJwt: []
+  security: []
   parameters:
     - $ref: "../components/headers.yaml#/IdempotencyKeyHeader"
     - $ref: "../components/headers.yaml#/XRequestIdHeader"
     - $ref: "../components/headers.yaml#/TraceparentHeader"
   requestBody:
-    required: false
+    required: true
     content:
       application/json:
         schema:
@@ -30,8 +32,8 @@ post:
           $ref: "../components/headers.yaml#/CacheControlNoStoreResponseHeader"
         X-Request-Id:
           $ref: "../components/headers.yaml#/XRequestIdResponseHeader"
-    "401":
-      description: Missing or invalid bearer JWT.
+    "400":
+      description: Malformed request payload or missing refresh_token.
       headers:
         X-Request-Id:
           $ref: "../components/headers.yaml#/XRequestIdResponseHeader"

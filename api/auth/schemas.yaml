@@ -51,11 +51,13 @@ LoginResponse:
 
 LogoutRequest:
   type: object
-  description: Optional payload specifying the specific refresh token to revoke.
+  description: Payload specifying the refresh token to revoke.
+  required:
+    - refresh_token
   properties:
     refresh_token:
       type: string
-      description: The refresh token to explicitly revoke. If omitted, the session associated with the bearer JWT is invalidated.
+      description: The active or expired opaque rotating refresh token to revoke.
       example: "rft_01HXZ5KBR2D912K9876543210ABCDEF"
 
 RefreshTokenRequest:
