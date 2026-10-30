@@ -15,7 +15,6 @@ post:
     - Authentication & Identity
   security: []
   parameters:
-    - $ref: "../components/headers.yaml#/IdempotencyKeyHeader"
     - $ref: "../components/headers.yaml#/XRequestIdHeader"
     - $ref: "../components/headers.yaml#/TraceparentHeader"
   requestBody:
